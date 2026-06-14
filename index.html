@@ -112,15 +112,28 @@
 <!-- SPLASH -->
 <div id="s-splash" class="screen active" style="background:linear-gradient(160deg,#0f1228 0%,#1a2550 60%,#0f1228 100%);">
   <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 24px;">
-    <div class="splash-icon">
-      <i class="ti ti-ball-football" style="font-size:38px;color:var(--blue);"></i>
+    <div style="width:130px;height:130px;border-radius:32px;background:linear-gradient(145deg,#2c3e7a,#1a2550);display:flex;align-items:center;justify-content:center;margin-bottom:22px;box-shadow:0 8px 32px rgba(0,0,0,0.4),0 0 0 1.5px rgba(55,138,221,0.3);">
+      <svg width="104" height="104" viewBox="0 0 70 70" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M35 3 L63 14 L63 38 Q63 57 35 67 Q7 57 7 38 L7 14 Z" fill="rgba(55,138,221,0.12)" stroke="#378ADD" stroke-width="2"/>
+        <circle cx="35" cy="25" r="14" fill="white"/>
+        <polygon points="35,13 39.5,17.5 37.5,23 32.5,23 30.5,17.5" fill="#2c3e7a"/>
+        <polygon points="22,22 25.5,18.5 29.5,21.5 28,27 24,27" fill="#2c3e7a"/>
+        <polygon points="48,22 44.5,18.5 40.5,21.5 42,27 46,27" fill="#2c3e7a"/>
+        <text x="35" y="48" text-anchor="middle" font-size="20" font-weight="900" stroke="#378ADD" stroke-width="4" stroke-linejoin="round" paint-order="stroke" fill="white" font-family="-apple-system,sans-serif">1X2</text>
+        <line x1="16" y1="53" x2="54" y2="53" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
+        <text x="35" y="62" text-anchor="middle" font-size="8.5" font-weight="700" fill="rgba(255,255,255,0.45)" font-family="-apple-system,sans-serif" letter-spacing="3">FAMILIA</text>
+      </svg>
     </div>
-    <h1 style="font-size:28px;font-weight:700;color:var(--text);margin-bottom:8px;">La Quiniela</h1>
-    <p style="font-size:15px;color:var(--text-sec);text-align:center;line-height:1.6;margin-bottom:36px;">La apuesta semanal de la familia.<br>Una quiniela, diez cracks.</p>
-    <button class="btn btn-primary" onclick="goTo('s-login')" style="margin-bottom:12px;"><i class="ti ti-login"></i> Entrar</button>
-    <button class="btn-ghost" onclick="goTo('s-help')"><i class="ti ti-help-circle" style="vertical-align:-2px;margin-right:4px;"></i>¿Cómo funciona?</button>
+    <h1 style="font-size:30px;font-weight:700;color:white;margin-bottom:8px;">La Quiniela</h1>
+    <p style="font-size:15px;color:rgba(255,255,255,0.5);text-align:center;line-height:1.6;margin-bottom:40px;">La apuesta semanal de la familia.</p>
+    <button class="btn btn-primary" onclick="goTo('s-login')" style="margin-bottom:12px;background:white;color:#1a2550;font-size:16px;padding:16px 20px;">
+      <i class="ti ti-login"></i> Entrar
+    </button>
+    <button onclick="goTo('s-help')" style="background:none;border:none;cursor:pointer;font-size:14px;color:rgba(255,255,255,0.4);padding:10px;">
+      <i class="ti ti-help-circle" style="vertical-align:-2px;margin-right:4px;"></i>¿Cómo funciona?
+    </button>
   </div>
-  <p style="text-align:center;font-size:11px;color:var(--text-ter);padding-bottom:24px;">LaLiga 2025-26 · Demo</p>
+  <p style="text-align:center;font-size:11px;color:rgba(255,255,255,0.2);padding-bottom:20px;">LaLiga 2025-26</p>
 </div>
 
 <!-- AYUDA -->
