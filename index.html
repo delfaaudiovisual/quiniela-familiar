@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="La Quiniela">
+<meta name="apple-mobile-web-app-title" content="La Piripiniela">
 <meta name="theme-color" content="#0f1228">
 <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 70 70'><rect width='70' height='70' rx='14' fill='%232c3e7a'/><path d='M35 6 L60 16 L60 38 Q60 56 35 65 Q10 56 10 38 L10 16 Z' fill='rgba(55,138,221,0.15)' stroke='%23378ADD' stroke-width='1.8'/><circle cx='35' cy='26' r='12' fill='white'/><text x='35' y='47' text-anchor='middle' font-size='16' font-weight='900' fill='white' font-family='sans-serif'>1X2</text></svg>">
-<title>La Quiniela Familiar</title>
+<title>La Piripiniela Familiar</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
 <style>
   :root {
@@ -124,7 +124,7 @@
         <text x="35" y="62" text-anchor="middle" font-size="8.5" font-weight="700" fill="rgba(255,255,255,0.45)" font-family="-apple-system,sans-serif" letter-spacing="3">FAMILIA</text>
       </svg>
     </div>
-    <h1 style="font-size:30px;font-weight:700;color:white;margin-bottom:8px;">La Quiniela</h1>
+    <h1 style="font-size:30px;font-weight:700;color:white;margin-bottom:8px;">La Piripiniela</h1>
     <p style="font-size:15px;color:rgba(255,255,255,0.5);text-align:center;line-height:1.6;margin-bottom:40px;">La apuesta semanal de la familia.</p>
     <button class="btn btn-primary" onclick="goTo('s-login')" style="margin-bottom:12px;background:white;color:#1a2550;font-size:16px;padding:16px 20px;">
       <i class="ti ti-login"></i> Entrar
@@ -145,7 +145,7 @@
   </div>
   <div class="page" style="padding-top:8px;">
     <div class="card">
-      <p class="sec-label" style="margin-bottom:12px;">La Quiniela</p>
+      <p class="sec-label" style="margin-bottom:12px;">La Piripiniela</p>
       <div class="help-step"><div class="step-num">1</div><div><p style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:3px;">Cada uno tiene un partido asignado</p><p style="font-size:13px;color:var(--text-sec);line-height:1.5;">Según el orden de la jornada, predices un resultado: <strong>1</strong> (gana el local), <strong>X</strong> (empate) o <strong>2</strong> (gana el visitante).</p></div></div>
       <div class="help-step"><div class="step-num">2</div><div><p style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:3px;">También tienes apuesta de pareja</p><p style="font-size:13px;color:var(--text-sec);line-height:1.5;">Cada pareja comparte un partido extra. Lo pone cualquiera de los dos. Si acertáis, cada uno suma <strong>0,5 puntos</strong>.</p></div></div>
       <div class="help-step"><div class="step-num">3</div><div><p style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:3px;">El orden rota cada semana</p><p style="font-size:13px;color:var(--text-sec);line-height:1.5;">El primero de la lista pasa al final la siguiente jornada. En 15 jornadas todos habrán pasado por todas las posiciones.</p></div></div>
@@ -213,12 +213,12 @@
         <div style="width:32px;height:32px;background:rgba(55,138,221,0.2);border-radius:50%;display:inline-flex;align-items:center;justify-content:center;margin-bottom:6px;">
           <i class="ti ti-ball-football" style="font-size:16px;color:#378ADD;"></i>
         </div>
-        <p style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.45);text-transform:uppercase;letter-spacing:0.12em;">La Quiniela</p>
+        <p style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.45);text-transform:uppercase;letter-spacing:0.12em;">La Piripiniela</p>
         <p style="font-size:10px;color:rgba(255,255,255,0.25);" id="share-subtitle">Clasificación · Jornada 1 · LaLiga 2025-26</p>
       </div>
       <div id="share-podio" style="display:flex;align-items:flex-end;justify-content:center;gap:10px;margin:16px 0;"></div>
       <div id="share-lista" style="display:flex;flex-direction:column;gap:5px;"></div>
-      <p style="text-align:center;font-size:9px;color:rgba(255,255,255,0.18);margin-top:16px;text-transform:uppercase;letter-spacing:0.08em;">🏆 La Quiniela Familiar · 2025-26</p>
+      <p style="text-align:center;font-size:9px;color:rgba(255,255,255,0.18);margin-top:16px;text-transform:uppercase;letter-spacing:0.08em;">🏆 La Piripiniela Familiar · 2025-26</p>
     </div>
     <p style="font-size:12px;color:rgba(255,255,255,0.25);text-align:center;margin-top:16px;line-height:1.6;">Haz captura de pantalla<br>y comparte en el grupo 📲</p>
   </div>
@@ -969,7 +969,7 @@ function renderGlobal(){
 
 function compartirWA(){
   const ap=S.apuestas[JORNADA]||{};
-  let txt=`🎯 *Quiniela Familiar — Jornada ${JORNADA}*\n\n`;
+  let txt=`🎯 *La Piripiniela — Jornada ${JORNADA}*\n\n`;
   JJ.forEach(j=>{
     const pos=getPos(j.id,JORNADA);
     const pt=PARTIDOS[pos-1];
