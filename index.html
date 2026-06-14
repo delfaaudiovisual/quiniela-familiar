@@ -1,1 +1,1080 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="La Quiniela">
+<meta name="theme-color" content="#0f1228">
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 70 70'><rect width='70' height='70' rx='14' fill='%232c3e7a'/><path d='M35 6 L60 16 L60 38 Q60 56 35 65 Q10 56 10 38 L10 16 Z' fill='rgba(55,138,221,0.15)' stroke='%23378ADD' stroke-width='1.8'/><circle cx='35' cy='26' r='12' fill='white'/><text x='35' y='47' text-anchor='middle' font-size='16' font-weight='900' fill='white' font-family='sans-serif'>1X2</text></svg>">
+<title>La Quiniela Familiar</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<style>
+  :root {
+    --bg:#f5f5f7;--card:#fff;--border:#e5e5ea;--border-light:#f0f0f5;
+    --text:#1a1a1a;--text-sec:#6e6e73;--text-ter:#aeaeb2;
+    --blue:#378ADD;--blue-bg:#E6F1FB;--blue-text:#0C447C;
+    --green:#34C759;--green-bg:#EAF3DE;--green-text:#27500A;--green-border:#639922;
+    --orange:#FF9500;--orange-bg:#FAEEDA;--orange-text:#633806;--orange-border:#BA7517;
+    --red:#FF3B30;--red-bg:#FCEBEB;--red-text:#791F1F;--red-border:#E24B4A;
+    --teal:#1D9E75;--teal-bg:#E1F5EE;--teal-text:#085041;--teal-border:#1D9E75;
+    --purple-bg:#EEEDFE;--purple-text:#3C3489;
+    --radius:12px;--radius-sm:8px;--radius-xs:6px;
+    --shadow:0 1px 3px rgba(0,0,0,0.08),0 1px 2px rgba(0,0,0,0.04);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+  body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif;background:var(--bg);min-height:100vh;display:flex;justify-content:center;}
+  #app{width:100%;max-width:480px;min-height:100vh;background:var(--bg);position:relative;}
+  .screen{display:none;min-height:100vh;flex-direction:column;}
+  .screen.active{display:flex;}
+  .page{padding:0 16px 100px;flex:1;}
+  .safe-top{height:env(safe-area-inset-top,20px);background:var(--bg);}
+  .card{background:var(--card);border:0.5px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:12px;box-shadow:var(--shadow);}
+  .card-flush{background:var(--card);border:0.5px solid var(--border);border-radius:var(--radius);margin-bottom:12px;box-shadow:var(--shadow);overflow:hidden;}
+  .badge{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:600;padding:3px 8px;border-radius:20px;}
+  .b-blue{background:var(--blue-bg);color:var(--blue-text);}
+  .b-green{background:var(--green-bg);color:var(--green-text);}
+  .b-orange{background:var(--orange-bg);color:var(--orange-text);}
+  .b-red{background:var(--red-bg);color:var(--red-text);}
+  .b-gray{background:var(--bg);color:var(--text-sec);}
+  .b-teal{background:var(--teal-bg);color:var(--teal-text);}
+  .av{border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0;}
+  .btn{border:none;border-radius:var(--radius-sm);font-size:15px;font-weight:600;cursor:pointer;transition:opacity 0.15s,transform 0.1s;display:inline-flex;align-items:center;justify-content:center;gap:6px;}
+  .btn:active{opacity:0.75;transform:scale(0.98);}
+  .btn-primary{background:var(--blue);color:#fff;padding:14px 20px;width:100%;border-radius:var(--radius);}
+  .btn-secondary{background:var(--card);color:var(--text);border:0.5px solid var(--border);padding:12px 20px;width:100%;border-radius:var(--radius);}
+  .btn-wa{background:#25D366;color:#fff;padding:14px 20px;width:100%;border-radius:var(--radius);}
+  .btn-ghost{background:none;color:var(--text-sec);border:none;font-size:13px;cursor:pointer;padding:8px 0;}
+  .ap-btn{height:44px;min-width:52px;border-radius:var(--radius-sm);font-size:16px;font-weight:700;cursor:pointer;transition:all 0.12s;border:1.5px solid var(--border);background:var(--card);color:var(--text-sec);}
+  .ap-btn:active{transform:scale(0.95);}
+  .ap-1{background:#e8e8ed;color:#1a1a1a;border-color:#c7c7cc;font-weight:800;}
+  .ap-x{background:#e8e8ed;color:#1a1a1a;border-color:#c7c7cc;font-weight:800;}
+  .ap-2{background:#e8e8ed;color:#1a1a1a;border-color:#c7c7cc;font-weight:800;}
+  .ap-gol{height:46px;min-width:52px;border-radius:var(--radius-sm);font-size:15px;font-weight:700;cursor:pointer;transition:all 0.12s;border:1.5px solid var(--border);background:var(--card);color:var(--text-sec);}
+  .ap-gol:active{transform:scale(0.95);}
+  .ap-gol-sel{background:var(--purple-bg);color:var(--purple-text);border-color:var(--purple-text);}
+  .nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:rgba(255,255,255,0.92);backdrop-filter:blur(20px);border-top:0.5px solid var(--border);display:flex;z-index:100;padding-bottom:env(safe-area-inset-bottom,8px);}
+  .nav-btn{flex:1;padding:10px 4px 6px;background:none;border:none;cursor:pointer;font-size:10px;font-weight:500;color:var(--text-ter);display:flex;flex-direction:column;align-items:center;gap:3px;transition:color 0.15s;}
+  .nav-btn i{font-size:24px;}
+  .nav-btn.active{color:var(--blue);}
+  .alert{border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:14px;display:flex;gap:10px;align-items:flex-start;}
+  .alert i{font-size:18px;margin-top:1px;flex-shrink:0;}
+  .alert p{font-size:13px;line-height:1.5;}
+  .alert-info{background:var(--blue-bg);}
+  .alert-info i,.alert-info p{color:var(--blue-text);}
+  .alert-warn{background:var(--orange-bg);border:0.5px solid var(--orange-border);}
+  .alert-warn i,.alert-warn p{color:var(--orange-text);}
+  .alert-danger{background:var(--red-bg);border:0.5px solid var(--red-border);}
+  .alert-danger i,.alert-danger p{color:var(--red-text);}
+  .alert-success{background:var(--green-bg);border:0.5px solid var(--green-border);}
+  .alert-success i,.alert-success p{color:var(--green-text);}
+  .alert-purple{background:var(--purple-bg);border:0.5px solid var(--purple-text);}
+  .alert-purple i,.alert-purple p{color:var(--purple-text);}
+  .row{display:flex;align-items:center;gap:10px;}
+  .partido-card{background:var(--card);border-radius:var(--radius);margin-bottom:10px;box-shadow:var(--shadow);overflow:hidden;}
+  .partido-card-ind{border:2px solid var(--blue);}
+  .partido-card-par{border:2px solid var(--teal);}
+  .partido-header{padding:6px 14px;font-size:11px;font-weight:600;}
+  .partido-header-ind{background:var(--blue-bg);color:var(--blue-text);}
+  .partido-header-par{background:var(--teal-bg);color:var(--teal-text);}
+  .partido-body{padding:12px 14px;}
+  .partido-nombre{font-size:17px;font-weight:700;color:var(--text);margin-bottom:12px;}
+  .ap-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .rank-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:0.5px solid var(--border-light);}
+  .rank-row:last-child{border-bottom:none;}
+  .rank-row.me{background:var(--blue-bg);border-radius:var(--radius-sm);padding:10px 12px;margin:2px -12px;border-bottom:none;}
+  .sec-label{font-size:11px;font-weight:600;color:var(--text-sec);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;}
+  input[type="text"]{width:100%;padding:11px 14px;border:0.5px solid var(--border);border-radius:var(--radius-sm);font-size:15px;background:var(--card);color:var(--text);outline:none;}
+  input[type="text"]:focus{border-color:var(--blue);}
+  .global-row{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:0.5px solid var(--border-light);transition:background 0.1s;}
+  .global-row:last-child{border-bottom:none;}
+  .global-row.me{background:var(--blue-bg);border-radius:var(--radius-sm);padding:8px 6px;margin:2px -6px;border-bottom:none;}
+  .global-row.me+.global-row{border-top:0.5px solid var(--border-light);}
+  .locked-banner{background:var(--red-bg);border:0.5px solid var(--red-border);border-radius:var(--radius-sm);padding:14px;text-align:center;margin-bottom:14px;}
+  .modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:200;display:flex;align-items:flex-end;justify-content:center;}
+  .modal-sheet{background:var(--card);border-radius:20px 20px 0 0;padding:24px 20px 40px;width:100%;max-width:480px;box-shadow:0 -4px 24px rgba(0,0,0,0.15);}
+  .topbar{padding:12px 16px 8px;background:var(--bg);position:sticky;top:0;z-index:50;}
+  .splash-icon{width:80px;height:80px;border-radius:50%;background:var(--blue-bg);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;}
+  .help-step{display:flex;gap:14px;padding:14px 0;border-bottom:0.5px solid var(--border-light);}
+  .help-step:last-child{border-bottom:none;}
+  .step-num{width:30px;height:30px;border-radius:50%;background:var(--blue-bg);color:var(--blue-text);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0;}
+  .hist-ap{display:inline-flex;align-items:center;justify-content:center;height:34px;min-width:44px;border-radius:var(--radius-xs);font-size:14px;font-weight:800;background:#e8e8ed;color:#1a1a1a;border:1.5px solid #c7c7cc;}
+  .pleno-grid{display:flex;flex-direction:column;gap:10px;margin-top:8px;}
+  .pleno-row{display:flex;align-items:center;gap:10px;}
+  .pleno-team-label{font-size:13px;font-weight:600;color:var(--text-sec);white-space:nowrap;min-width:88px;flex-shrink:0;}
+  .pleno-btns{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;flex:1;}
+</style>
+</head>
+<body>
+<div id="app">
 
+<!-- SPLASH -->
+<div id="s-splash" class="screen active">
+  <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 24px;">
+    <div class="splash-icon">
+      <i class="ti ti-ball-football" style="font-size:38px;color:var(--blue);"></i>
+    </div>
+    <h1 style="font-size:28px;font-weight:700;color:var(--text);margin-bottom:8px;">La Quiniela</h1>
+    <p style="font-size:15px;color:var(--text-sec);text-align:center;line-height:1.6;margin-bottom:36px;">La apuesta semanal de la familia.<br>Una quiniela, diez cracks.</p>
+    <button class="btn btn-primary" onclick="goTo('s-login')" style="margin-bottom:12px;"><i class="ti ti-login"></i> Entrar</button>
+    <button class="btn-ghost" onclick="goTo('s-help')"><i class="ti ti-help-circle" style="vertical-align:-2px;margin-right:4px;"></i>¿Cómo funciona?</button>
+  </div>
+  <p style="text-align:center;font-size:11px;color:var(--text-ter);padding-bottom:24px;">LaLiga 2025-26 · Demo</p>
+</div>
+
+<!-- AYUDA -->
+<div id="s-help" class="screen">
+  <div class="safe-top"></div>
+  <div class="topbar row" style="gap:12px;">
+    <button onclick="goTo('s-splash')" style="background:none;border:none;cursor:pointer;font-size:24px;color:var(--text-sec);padding:0;line-height:1;"><i class="ti ti-arrow-left"></i></button>
+    <h2 style="font-size:18px;font-weight:700;color:var(--text);">¿Cómo funciona?</h2>
+  </div>
+  <div class="page" style="padding-top:8px;">
+    <div class="card">
+      <p class="sec-label" style="margin-bottom:12px;">La Quiniela</p>
+      <div class="help-step"><div class="step-num">1</div><div><p style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:3px;">Cada uno tiene un partido asignado</p><p style="font-size:13px;color:var(--text-sec);line-height:1.5;">Según el orden de la jornada, predices un resultado: <strong>1</strong> (gana el local), <strong>X</strong> (empate) o <strong>2</strong> (gana el visitante).</p></div></div>
+      <div class="help-step"><div class="step-num">2</div><div><p style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:3px;">También tienes apuesta de pareja</p><p style="font-size:13px;color:var(--text-sec);line-height:1.5;">Cada pareja comparte un partido extra. Lo pone cualquiera de los dos. Si acertáis, cada uno suma <strong>0,5 puntos</strong>.</p></div></div>
+      <div class="help-step"><div class="step-num">3</div><div><p style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:3px;">El orden rota cada semana</p><p style="font-size:13px;color:var(--text-sec);line-height:1.5;">El primero de la lista pasa al final la siguiente jornada. En 15 jornadas todos habrán pasado por todas las posiciones.</p></div></div>
+      <div class="help-step"><div class="step-num">4</div><div><p style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:3px;">Cierre el jueves a las 22:00h</p><p style="font-size:13px;color:var(--text-sec);line-height:1.5;">Después no se pueden cambiar las apuestas. ¡No te olvides!</p></div></div>
+    </div>
+    <div class="card">
+      <p class="sec-label" style="margin-bottom:12px;">El Pleno al 15 ⭐</p>
+      <div class="help-step"><div class="step-num">!</div><div><p style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:3px;">Es diferente al resto</p><p style="font-size:13px;color:var(--text-sec);line-height:1.5;">En el Pleno al 15 no se elige 1, X o 2. Hay que predecir los <strong>goles exactos</strong> de cada equipo.</p></div></div>
+      <div class="help-step"><div class="step-num">2</div><div><p style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:3px;">Cuatro opciones por equipo</p><p style="font-size:13px;color:var(--text-sec);line-height:1.5;"><strong>0</strong> = ningún gol · <strong>1</strong> = exactamente 1 · <strong>2</strong> = exactamente 2 · <strong>M</strong> = 3 o más goles</p></div></div>
+      <div class="help-step"><div class="step-num">3</div><div><p style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:3px;">Ejemplo práctico</p><p style="font-size:13px;color:var(--text-sec);line-height:1.5;">Si crees que el partido termina <strong>3-1</strong>, marca <strong>M</strong> para el local y <strong>1</strong> para el visitante.</p></div></div>
+    </div>
+    <button class="btn btn-primary" onclick="goTo('s-login')">Entendido, ¡entrar!</button>
+  </div>
+</div>
+
+<!-- LOGIN -->
+<div id="s-login" class="screen">
+  <div class="safe-top"></div>
+  <div class="topbar">
+    <h2 style="font-size:22px;font-weight:700;color:var(--text);margin-bottom:2px;">¿Quién eres?</h2>
+    <p style="font-size:14px;color:var(--text-sec);">Toca tu nombre para entrar</p>
+  </div>
+  <div class="page" style="padding-top:8px;" id="login-list"></div>
+</div>
+
+<!-- MAIN -->
+<div id="s-main" class="screen" style="padding-bottom:0;">
+  <div id="tab-jornada" style="display:flex;flex-direction:column;flex:1;"></div>
+  <div id="tab-ranking" style="display:none;flex-direction:column;flex:1;"></div>
+  <div id="tab-yo" style="display:none;flex-direction:column;flex:1;"></div>
+  <nav class="nav">
+    <button class="nav-btn active" id="nb-jornada" onclick="navTo('jornada')"><i class="ti ti-calendar"></i>Jornada</button>
+    <button class="nav-btn" id="nb-ranking" onclick="navTo('ranking')"><i class="ti ti-trophy"></i>Ranking</button>
+    <button class="nav-btn" id="nb-yo" onclick="navTo('yo')"><i class="ti ti-user"></i>Yo</button>
+  </nav>
+</div>
+
+<!-- GLOBAL -->
+<div id="s-global" class="screen">
+  <div class="safe-top"></div>
+  <div class="topbar row" style="gap:12px;">
+    <button onclick="navTo('jornada')" style="background:none;border:none;cursor:pointer;font-size:24px;color:var(--text-sec);padding:0;line-height:1;"><i class="ti ti-arrow-left"></i></button>
+    <div>
+      <h2 style="font-size:18px;font-weight:700;color:var(--text);">Apuestas de todos</h2>
+      <p style="font-size:12px;color:var(--text-sec);">Jornada <span id="global-jornada"></span></p>
+    </div>
+  </div>
+  <div class="page" style="padding-top:8px;" id="pg-global"></div>
+</div>
+
+
+<!-- TARJETA COMPARTIR -->
+<div id="s-share" class="screen" style="background:#0f0f1a;">
+  <div style="position:sticky;top:0;z-index:50;background:#0f0f1a;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;">
+    <button onclick="goTo('s-main');navTo('ranking')" style="background:rgba(255,255,255,0.08);border:none;border-radius:20px;padding:7px 14px;font-size:13px;font-weight:600;color:rgba(255,255,255,0.7);cursor:pointer;display:flex;align-items:center;gap:6px;">
+      <i class="ti ti-arrow-left" style="font-size:16px;"></i> Volver
+    </button>
+    <p style="font-size:12px;color:rgba(255,255,255,0.3);font-weight:500;">Haz captura y comparte</p>
+    <div style="width:70px;"></div>
+  </div>
+  <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:8px 20px 40px;" id="share-card-wrap">
+    <div id="share-card" style="width:100%;max-width:360px;background:linear-gradient(160deg,#0f0f1a 0%,#1a1040 40%,#0d1f3c 100%);border-radius:24px;padding:24px 20px 28px;position:relative;overflow:hidden;">
+      <div style="position:absolute;top:0;left:0;right:0;bottom:0;background:radial-gradient(ellipse at 50% 0%,rgba(55,138,221,0.18) 0%,transparent 60%);pointer-events:none;"></div>
+      <div style="text-align:center;margin-bottom:6px;">
+        <div style="width:32px;height:32px;background:rgba(55,138,221,0.2);border-radius:50%;display:inline-flex;align-items:center;justify-content:center;margin-bottom:6px;">
+          <i class="ti ti-ball-football" style="font-size:16px;color:#378ADD;"></i>
+        </div>
+        <p style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.45);text-transform:uppercase;letter-spacing:0.12em;">La Quiniela</p>
+        <p style="font-size:10px;color:rgba(255,255,255,0.25);" id="share-subtitle">Clasificación · Jornada 1 · LaLiga 2025-26</p>
+      </div>
+      <div id="share-podio" style="display:flex;align-items:flex-end;justify-content:center;gap:10px;margin:16px 0;"></div>
+      <div id="share-lista" style="display:flex;flex-direction:column;gap:5px;"></div>
+      <p style="text-align:center;font-size:9px;color:rgba(255,255,255,0.18);margin-top:16px;text-transform:uppercase;letter-spacing:0.08em;">🏆 La Quiniela Familiar · 2025-26</p>
+    </div>
+    <p style="font-size:12px;color:rgba(255,255,255,0.25);text-align:center;margin-top:16px;line-height:1.6;">Haz captura de pantalla<br>y comparte en el grupo 📲</p>
+  </div>
+</div>
+
+<!-- MODAL CONFIRMACION -->
+<div id="modal-confirm" class="modal-overlay" style="display:none;" onclick="if(event.target===this)closeModal()">
+  <div class="modal-sheet">
+    <div style="text-align:center;margin-bottom:16px;">
+      <div style="width:52px;height:52px;border-radius:50%;background:var(--blue-bg);display:flex;align-items:center;justify-content:center;margin:0 auto 10px;">
+        <i class="ti ti-check" style="font-size:26px;color:var(--blue);"></i>
+      </div>
+      <p style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:4px;">¿Confirmas tus apuestas?</p>
+      <p style="font-size:13px;color:var(--text-sec);line-height:1.5;">No podrás cambiarlas después<br>del <strong>jueves a las 22:00h</strong></p>
+    </div>
+    <div style="background:var(--bg);border-radius:var(--radius-sm);padding:8px 14px;margin-bottom:16px;" id="modal-resumen"></div>
+    <button class="btn btn-primary" style="font-size:16px;padding:16px;margin-bottom:10px;" onclick="confirmarFinal()">
+      <i class="ti ti-check"></i> Sí, confirmar
+    </button>
+    <button onclick="closeModal()" style="width:100%;padding:14px;background:none;border:0.5px solid var(--border);border-radius:var(--radius);font-size:15px;font-weight:600;cursor:pointer;color:var(--text-sec);">
+      Volver y cambiar
+    </button>
+  </div>
+</div>
+</div>
+
+<script>
+// ============ AVATARS ============
+const AVATARS = {
+  "deborah": "images/debora.png",
+  "alexander": "images/alex.png",
+  "virginia": "images/virgi.png",
+  "ivan": "images/ivan.png",
+  "jonathan": "images/jonathan.png",
+  "daniel": "images/dani.png",
+  "nines": "images/nines.png",
+  "felix": "images/felix.png",
+  "mari": "images/mari.png",
+  "javier": "images/javi.png",
+};
+
+// ============ DATOS ============
+const JJ=[
+  {id:'deborah',  n:'Deborah',  p:'p1',c:'#EEEDFE',ct:'#3C3489'},
+  {id:'alexander',n:'Alexander',p:'p2',c:'#E6F1FB',ct:'#0C447C'},
+  {id:'virginia', n:'Virginia', p:'p2',c:'#E1F5EE',ct:'#085041'},
+  {id:'ivan',     n:'Ivan',     p:'p1',c:'#FAECE7',ct:'#712B13'},
+  {id:'jonathan', n:'Jonathan', p:'p3',c:'#FAEEDA',ct:'#633806'},
+  {id:'daniel',   n:'Daniel',   p:'p3',c:'#EAF3DE',ct:'#27500A'},
+  {id:'nines',    n:'Nines',    p:'p4',c:'#FBEAF0',ct:'#72243E'},
+  {id:'felix',    n:'Felix',    p:'p4',c:'#FCEBEB',ct:'#791F1F'},
+  {id:'mari',     n:'Mari',     p:'p5',c:'#F1EFE8',ct:'#444441'},
+  {id:'javier',   n:'Javier',  p:'p5',c:'#EEEDFE',ct:'#26215C'},
+];
+const PP={
+  p1:{id:'p1',n:'Deborah & Ivan',       m:['deborah','ivan']},
+  p2:{id:'p2',n:'Virginia & Alexander', m:['virginia','alexander']},
+  p3:{id:'p3',n:'Jonathan & Daniel',    m:['jonathan','daniel']},
+  p4:{id:'p4',n:'Nines & Felix',        m:['nines','felix']},
+  p5:{id:'p5',n:'Mari & Javier',        m:['mari','javier']},
+};
+const ORDEN0=['deborah','alexander','virginia','ivan','jonathan','daniel','nines','felix','mari','javier','p1','p2','p3','p4','p5'];
+const PARTIDOS=[
+  {l:'Real Madrid',    v:'Barcelona',      r:'1', c:true},
+  {l:'Atlético',       v:'Sevilla',        r:'X', c:true},
+  {l:'Valencia',       v:'Villarreal',     r:'2', c:true},
+  {l:'Athletic Club',  v:'Real Sociedad',  r:null,c:false},
+  {l:'Betis',          v:'Getafe',         r:null,c:false},
+  {l:'Osasuna',        v:'Celta Vigo',     r:null,c:false},
+  {l:'Girona',         v:'Rayo Vallecano', r:null,c:false},
+  {l:'Mallorca',       v:'Las Palmas',     r:null,c:false},
+  {l:'Leganés',        v:'Espanyol',       r:null,c:false},
+  {l:'Valladolid',     v:'Alavés',         r:null,c:false},
+  {l:'Real Sociedad',  v:'Atlético',       r:null,c:false},
+  {l:'Sevilla',        v:'Valencia',       r:null,c:false},
+  {l:'Villarreal',     v:'Athletic',       r:null,c:false},
+  {l:'Getafe',         v:'Betis',          r:null,c:false},
+  {l:'Real Madrid',    v:'Atlético',       r:null,c:false, pleno:true}, // Pleno al 15
+];
+const JORNADA=1;
+const BLOQUEADO=false;
+
+// ============ STATE ============
+let S={player:null,apuestas:{},step:1}; // step: 1=individual, 2=pareja, 3=global
+try{const ss=localStorage.getItem('qff_v5');if(ss)S={...S,...JSON.parse(ss)};}catch(e){}
+
+function preloadDemo(){}
+
+function save(){try{localStorage.setItem('qff_v5',JSON.stringify(S));}catch(e){}}
+function ini(n){return n.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);}
+function goTo(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');window.scrollTo(0,0);}
+function getOrden(j){const s=(j-1)%15;return[...ORDEN0.slice(s),...ORDEN0.slice(0,s)];}
+function getPos(id,j){return getOrden(j).indexOf(id)+1;}
+function jugador(id){return JJ.find(j=>j.id===id);}
+function avHtml(j,size=36){
+  if(AVATARS[j.id]){
+    return`<div class="av" style="width:${size}px;height:${size}px;background:url(${AVATARS[j.id]}) center/cover;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,0.15);"></div>`;
+  }
+  return`<div class="av" style="width:${size}px;height:${size}px;font-size:${Math.round(size*0.33)}px;background:${j.c};color:${j.ct};">${ini(j.n)}</div>`;
+}
+
+function parejaAvHtml(par,size=36){
+  const m1=JJ.find(j=>j.id===par.m[0]);
+  const m2=JJ.find(j=>j.id===par.m[1]);
+  const half=size/2;
+  return`<div style="width:${size}px;height:${size}px;border-radius:50%;overflow:hidden;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,0.15);display:flex;flex-shrink:0;">
+    <div style="width:50%;height:100%;background:url(${AVATARS[m1.id]}) center/cover no-repeat;background-size:200% 100%;background-position:60% center;"></div>
+    <div style="width:50%;height:100%;background:url(${AVATARS[m2.id]}) center/cover no-repeat;background-size:200% 100%;background-position:40% center;"></div>
+  </div>`;
+}
+
+// ============ NAV ============
+function navTo(tab){
+  ['jornada','ranking','yo'].forEach(t=>{
+    document.getElementById('tab-'+t).style.display=t===tab?'flex':'none';
+    document.getElementById('nb-'+t).classList.remove('active');
+  });
+  document.getElementById('nb-'+tab).classList.add('active');
+  goTo('s-main');
+  if(tab==='jornada'){
+    const p=jugador(S.player);
+    if(p){
+      const ap=S.apuestas[JORNADA]||{};
+      const posInd=getPos(p.id,JORNADA);
+      const ptInd=PARTIDOS[posInd-1];
+      const miAp=ptInd.pleno?(ap['pleno_'+p.id]||{}):(ap[p.id]||null);
+      const tieneAp=ptInd.pleno?(miAp.l&&miAp.v):!!miAp;
+      if(!tieneAp)S.step=1;
+      else if(S.step<3)S.step=S.step||2;
+    }
+    renderJornada();
+  }
+  if(tab==='ranking')renderRanking();
+  if(tab==='yo')renderYo();
+}
+
+// ============ LOGIN ============
+function renderLogin(){
+  const ap=S.apuestas[JORNADA]||{};
+  document.getElementById('login-list').innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      ${JJ.map(j=>{
+        const done=ap[j.id];
+        return`<div onclick="login('${j.id}')" style="display:flex;align-items:center;gap:14px;cursor:pointer;padding:14px 16px;border-radius:var(--radius);background:var(--card);border:0.5px solid ${done?'var(--green-border)':'var(--border)'};box-shadow:var(--shadow);position:relative;transition:opacity 0.15s;" onmouseenter="this.style.opacity='0.8'" onmouseleave="this.style.opacity='1'">
+          ${done?`<div style="position:absolute;top:8px;right:8px;width:18px;height:18px;border-radius:50%;background:var(--green-bg);display:flex;align-items:center;justify-content:center;"><i class="ti ti-check" style="font-size:11px;color:var(--green-text);"></i></div>`:''}
+          ${AVATARS[j.id]?`<div style="width:56px;height:56px;border-radius:50%;background:url(${AVATARS[j.id]}) center/cover;border:2.5px solid ${done?'var(--green-border)':'var(--border)'};box-shadow:0 2px 8px rgba(0,0,0,0.1);flex-shrink:0;"></div>`:`<div class="av" style="width:56px;height:56px;font-size:16px;background:${j.c};color:${j.ct};border:2.5px solid ${done?'var(--green-border)':'var(--border)'};flex-shrink:0;">${ini(j.n)}</div>`}
+          <p style="font-size:15px;font-weight:600;color:${done?'var(--green-text)':'var(--text)'};">${j.n}</p>
+        </div>`;
+      }).join('')}
+    </div>`;
+}
+
+function login(pid){
+  S.player=pid;save();navTo('jornada');
+}
+function logout(){S.player=null;save();renderLogin();goTo('s-login');}
+
+// ============ JORNADA ============
+function renderJornada(){
+  const p=jugador(S.player);if(!p)return;
+  if(S.step===1) renderStep1(p);
+  else if(S.step===2) renderStep2(p);
+  else renderStep3(p);
+}
+
+// ---- STEP 1: apuesta individual ----
+function renderStep1(p){
+  const ap=S.apuestas[JORNADA]||{};
+  const posInd=getPos(p.id,JORNADA);
+  const ptInd=PARTIDOS[posInd-1];
+  const miAp=ptInd.pleno?(ap['pleno_'+p.id]||{}):(ap[p.id]||null);
+  const tieneAp=ptInd.pleno?(miAp.l&&miAp.v):!!miAp;
+
+  let h=topbarHtml(p);
+  h+=`<div class="page" style="padding-top:8px;">`;
+  h+=stepIndicatorHtml(1);
+  if(BLOQUEADO){h+=lockedHtml();}
+  else{h+=`<div class="alert alert-info"><i class="ti ti-info-circle"></i><p>Apuesta antes del <strong>jueves a las 22:00h</strong>.</p></div>`;}
+  h+=`<p class="sec-label">Tu partido — posición ${posInd}</p>`;
+  h+=ptInd.pleno?plenoCardHtml(posInd,p.id,false):partidoCardHtml(posInd,p.id,false,true);
+  if(!BLOQUEADO){
+    h+=`<button class="btn btn-primary" style="margin-top:8px;font-size:15px;" onclick="goStep2()" ${tieneAp?'':'disabled'} style="${tieneAp?'':'opacity:0.4;'}margin-top:8px;">
+      Siguiente — Apuesta de pareja <i class="ti ti-arrow-right"></i>
+    </button>`;
+  }
+  h+=`</div>`;
+  document.getElementById('tab-jornada').innerHTML=h;
+}
+
+// ---- STEP 2: apuesta de pareja ----
+function renderStep2(p){
+  const ap=S.apuestas[JORNADA]||{};
+  const posPar=getPos(p.p,JORNADA);
+  const ptPar=PARTIDOS[posPar-1];
+  const comp=JJ.find(j=>j.id!==p.id&&j.p===p.p);
+
+  const parAp=ptPar.pleno?(ap['pleno_'+p.p]||{}):(ap[p.p]||null);
+  const tieneParAp=ptPar.pleno?!!(parAp.l&&parAp.v):!!parAp;
+  const compCedio=ap['_skip_'+p.p]===comp.id;
+
+  let h=topbarHtml(p);
+  h+=`<div class="page" style="padding-top:8px;">`;
+  h+=stepIndicatorHtml(2);
+
+  if(tieneParAp && !compCedio){
+    // Alguien ya la puso (comp o yo antes) sin que el comp cediera — bloqueada
+    h+=`<div class="alert alert-info"><i class="ti ti-info-circle"></i><p>La apuesta de pareja ya está cubierta. Puedes confirmar.</p></div>`;
+    h+=`<p class="sec-label">Pareja — ${PP[p.p].n} — posición ${posPar}</p>`;
+    h+=ptPar.pleno?plenoCardHtml(posPar,p.p,true):partidoCardHtml(posPar,p.p,true,false);
+    h+=`<button class="btn btn-primary" style="margin-top:8px;" onclick="confirmarTodo()">
+      <i class="ti ti-check"></i>Confirmar y ver apuestas
+    </button>`;
+
+  } else if(compCedio && !tieneParAp){
+    // Comp cedió y nadie la ha puesto — forzar
+    h+=`<div class="alert alert-warn"><i class="ti ti-alert-triangle"></i><p>${comp.n} cedió el turno. Tienes que rellenar la apuesta de pareja para continuar.</p></div>`;
+    h+=`<p class="sec-label">Pareja — ${PP[p.p].n} — posición ${posPar}</p>`;
+    h+=ptPar.pleno?plenoCardHtml(posPar,p.p,true):partidoCardHtml(posPar,p.p,true,true);
+    h+=`<button class="btn btn-primary" style="margin-top:8px;${tieneParAp?'':'opacity:0.4;'}" onclick="confirmarTodo()" ${tieneParAp?'':'disabled'}>
+      <i class="ti ti-check"></i>Confirmar y ver apuestas
+    </button>`;
+
+  } else if(compCedio && tieneParAp){
+    // Comp cedió pero yo ya la rellené — confirmar sin mensaje de quién
+    h+=`<div class="alert alert-success"><i class="ti ti-check"></i><p>Apuesta de pareja lista. Puedes confirmar.</p></div>`;
+    h+=`<p class="sec-label">Pareja — ${PP[p.p].n} — posición ${posPar}</p>`;
+    h+=ptPar.pleno?plenoCardHtml(posPar,p.p,true):partidoCardHtml(posPar,p.p,true,!BLOQUEADO);
+    h+=`<button class="btn btn-primary" style="margin-top:8px;" onclick="confirmarTodo()">
+      <i class="ti ti-check"></i>Confirmar y ver apuestas
+    </button>`;
+
+  } else {
+    // Nadie la ha puesto — ofrecer o ceder
+    h+=`<div class="alert alert-info"><i class="ti ti-info-circle"></i><p>La apuesta de pareja la puede poner cualquiera de los dos antes del jueves 22h.</p></div>`;
+    h+=`<p class="sec-label">Pareja — ${PP[p.p].n} — posición ${posPar}</p>`;
+    h+=ptPar.pleno?plenoCardHtml(posPar,p.p,true):partidoCardHtml(posPar,p.p,true,true);
+    h+=`<div style="display:flex;gap:8px;margin-top:8px;">
+      <button class="btn btn-primary" style="flex:1;${tieneParAp?'':'opacity:0.4;'}" onclick="confirmarTodo()" ${tieneParAp?'':'disabled'}>
+        <i class="ti ti-check"></i>Confirmar todo
+      </button>
+      <button onclick="skipPareja()" style="padding:12px 16px;background:none;border:0.5px solid var(--border);border-radius:var(--radius);font-size:13px;font-weight:600;cursor:pointer;color:var(--text-sec);white-space:nowrap;">
+        Lo pone mi pareja
+      </button>
+    </div>
+    <p style="font-size:11px;color:var(--text-ter);text-align:center;margin-top:8px;">Si cedes el turno quedará pendiente hasta que entre tu pareja.</p>`;
+  }
+
+  h+=`<button onclick="S.step=1;renderJornada();" style="margin-top:10px;width:100%;padding:10px;background:none;border:none;font-size:13px;color:var(--text-sec);cursor:pointer;">
+    <i class="ti ti-arrow-left" style="vertical-align:-2px;margin-right:4px;"></i>Volver a mi partido
+  </button>`;
+  h+=`</div>`;
+  document.getElementById('tab-jornada').innerHTML=h;
+}
+
+// Confirmar solo mi apuesta individual (cuando el otro pone la pareja)
+function confirmarMiApuesta(){
+  save();
+  S.step=3;save();renderJornada();
+}
+
+// ---- STEP 3: tabla global ----
+function renderStep3(p){
+  const ap=S.apuestas[JORNADA]||{};
+  const posPar=getPos(p.p,JORNADA);
+  const ptPar=PARTIDOS[posPar-1];
+  const parAp=ptPar.pleno?(ap['pleno_'+p.p]||{}):(ap[p.p]||null);
+  const tieneParAp=ptPar.pleno?!!(parAp.l&&parAp.v):!!parAp;
+  const parejaPendiente=!tieneParAp;
+
+  let h=topbarHtml(p);
+  h+=`<div class="page" style="padding-top:8px;">`;
+  if(parejaPendiente&&!BLOQUEADO){
+    const comp=JJ.find(j=>j.id!==p.id&&j.p===p.p);
+    h+=`<div class="alert alert-warn"><i class="ti ti-alert-triangle"></i><p>Tu apuesta individual está guardada. La apuesta de pareja está pendiente — ${comp?comp.n:'tu pareja'} tiene que rellenarla cuando entre.</p></div>`;
+  } else if(!BLOQUEADO){
+    h+=`<p style="font-size:11px;color:var(--text-ter);text-align:center;margin-bottom:10px;">Toca tu fila para cambiar tu apuesta antes del jueves 22h</p>`;
+  }
+  h+=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+    <div style="flex:1;height:0.5px;background:var(--border);"></div>
+    <p style="font-size:11px;font-weight:600;color:var(--text-sec);text-transform:uppercase;letter-spacing:0.06em;white-space:nowrap;">Apuestas de todos</p>
+    <div style="flex:1;height:0.5px;background:var(--border);"></div>
+  </div>`;
+  h+=renderGlobalTable(p,ap);
+  h+=`</div>`;
+  document.getElementById('tab-jornada').innerHTML=h;
+}
+
+function topbarHtml(p, showSalir=false){
+  return`<div class="safe-top"></div>
+  <div class="topbar" style="display:flex;align-items:center;justify-content:space-between;">
+    <div class="row" style="gap:10px;">${avHtml(p,36)}<div>
+      <p style="font-size:15px;font-weight:700;color:var(--text);">${p.n}</p>
+      <p style="font-size:11px;color:var(--text-sec);">Jornada ${JORNADA} · LaLiga 2025-26</p>
+    </div></div>
+    ${showSalir?`<button onclick="logout()" class="badge b-gray" style="cursor:pointer;border:none;font-size:11px;font-weight:600;">Cambiar perfil</button>`:''}
+  </div>`;
+}
+
+function stepIndicatorHtml(current){
+  const steps=[{n:1,l:'Tu partido'},{n:2,l:'Apuesta de pareja'},{n:3,l:'Ver apuestas'}];
+  const s=steps[current-1];
+  return`<div style="background:var(--blue-bg);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;">
+    <div>
+      <p style="font-size:11px;font-weight:700;color:var(--blue-text);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px;">Paso ${current} de 3</p>
+      <p style="font-size:16px;font-weight:700;color:var(--blue-text);">${s.l}</p>
+    </div>
+    <div style="display:flex;gap:5px;align-items:center;">
+      ${[1,2,3].map(n=>`<div style="width:${n===current?28:10}px;height:10px;border-radius:5px;background:${n<=current?'var(--blue)':'var(--border)'};transition:width 0.2s;"></div>`).join('')}
+    </div>
+  </div>`;
+}
+
+function lockedHtml(){
+  return`<div class="locked-banner"><i class="ti ti-lock" style="font-size:22px;color:var(--red-text);display:block;margin-bottom:4px;"></i><p style="font-size:14px;font-weight:700;color:var(--red-text);">Apuestas cerradas</p><p style="font-size:12px;color:var(--red-text);margin-top:2px;">El plazo cerró el jueves a las 22:00h</p></div>`;
+}
+
+function goStep2(){
+  const p=jugador(S.player);
+  const ap=S.apuestas[JORNADA]||{};
+  const posInd=getPos(p.id,JORNADA);
+  const ptInd=PARTIDOS[posInd-1];
+  const miAp=ptInd.pleno?(ap['pleno_'+p.id]||{}):(ap[p.id]||null);
+  const tieneAp=ptInd.pleno?(miAp.l&&miAp.v):!!miAp;
+  if(!tieneAp){alert('Selecciona tu apuesta antes de continuar.');return;}
+  S.step=2;save();renderJornada();
+}
+
+function skipPareja(){
+  const p=jugador(S.player);
+  if(!S.apuestas[JORNADA])S.apuestas[JORNADA]={};
+  S.apuestas[JORNADA]['_skip_'+p.p]=p.id;
+  save();
+  // Show modal with summary before going to step 3
+  const posInd=getPos(p.id,JORNADA);
+  const ptInd=PARTIDOS[posInd-1];
+  const ap=S.apuestas[JORNADA];
+  const aInd=ptInd.pleno?(ap['pleno_'+p.id]||{}):(ap[p.id]||'');
+  const indText=ptInd.pleno?(aInd.l&&aInd.v?`⭐ ${aInd.l}-${aInd.v}`:'—'):aInd;
+  const comp=JJ.find(j=>j.id!==p.id&&j.p===p.p);
+  document.getElementById('modal-resumen').innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:0.5px solid var(--border-light);">
+      <span style="font-size:14px;color:var(--text-sec);">Tu partido (P${posInd})</span>
+      <span style="font-size:16px;font-weight:800;background:#e8e8ed;color:#1a1a1a;padding:4px 16px;border-radius:8px;border:1.5px solid #c7c7cc;">${indText}</span>
+    </div>
+    <div style="padding:8px 0;">
+      <p style="font-size:13px;color:var(--text-sec);line-height:1.5;">
+        <i class="ti ti-arrow-forward" style="vertical-align:-2px;color:var(--orange-text);"></i>
+        ${comp?comp.n:'Tu pareja'} pondrá la apuesta de pareja cuando entre.
+      </p>
+    </div>`;
+  // Override confirmarFinal to go to step 3 (skip mode)
+  window._skipMode=true;
+  document.getElementById('modal-confirm').style.display='flex';
+}
+
+function confirmarTodo(){
+  const p=jugador(S.player);
+  if(!S.apuestas[JORNADA])S.apuestas[JORNADA]={};
+  const ap=S.apuestas[JORNADA];
+  const posInd=getPos(p.id,JORNADA);
+  const posPar=getPos(p.p,JORNADA);
+  const ptInd=PARTIDOS[posInd-1];
+  const ptPar=PARTIDOS[posPar-1];
+  const parAp=ptPar.pleno?(ap['pleno_'+p.p]||{}):(ap[p.p]||null);
+  const tieneParAp=ptPar.pleno?!!(parAp.l&&parAp.v):!!parAp;
+  const comp=JJ.find(j=>j.id!==p.id&&j.p===p.p);
+  const compCedio=ap['_skip_'+p.p]===comp.id&&!tieneParAp;
+
+  if(compCedio&&!tieneParAp){
+    alert('Tienes que rellenar la apuesta de pareja para poder continuar.');return;
+  }
+
+  // pareja tracking removed - not needed
+
+  // Build modal summary
+  const aInd=ptInd.pleno?(ap['pleno_'+p.id]||{}):(ap[p.id]||'');
+  const indText=ptInd.pleno?(aInd.l&&aInd.v?`⭐ ${aInd.l}-${aInd.v}`:'—'):aInd;
+  const parText=tieneParAp
+    ?(ptPar.pleno?(parAp.l&&parAp.v?`⭐ ${parAp.l}-${parAp.v}`:'—'):(parAp||'—'))
+    :'Pendiente (la pondrá tu pareja)';
+  const quienPuso=ap['_pareja_puesta_por_'+p.p];
+  const compLaPuso=quienPuso&&quienPuso!==p.id;
+
+  document.getElementById('modal-resumen').innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:0.5px solid var(--border-light);">
+      <span style="font-size:14px;color:var(--text-sec);">Tu partido (P${posInd})</span>
+      <span style="font-size:16px;font-weight:800;background:#e8e8ed;color:#1a1a1a;padding:4px 16px;border-radius:8px;border:1.5px solid #c7c7cc;">${indText}</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;">
+      <span style="font-size:14px;color:var(--text-sec);">Pareja (P${posPar})${compLaPuso?' · '+comp.n:''}</span>
+      ${tieneParAp
+        ?`<span style="font-size:16px;font-weight:800;background:#e8e8ed;color:#1a1a1a;padding:4px 16px;border-radius:8px;border:1.5px solid #c7c7cc;">${parText}</span>`
+        :`<span style="font-size:12px;color:var(--orange-text);font-weight:600;">⏳ ${parText}</span>`
+      }
+    </div>`;
+  save();
+  document.getElementById('modal-confirm').style.display='flex';
+}
+
+function closeModal(){
+  document.getElementById('modal-confirm').style.display='none';
+}
+
+function confirmarFinal(){
+  closeModal();
+  window._skipMode=false;
+  S.step=3;save();renderJornada();
+}
+
+// Also replace confirmarMiApuesta to show modal too
+function confirmarMiApuesta(){
+  confirmarTodo();
+}
+
+function renderGlobalTable(p,ap){
+  const all=[...JJ.map(j=>({id:j.id,n:j.n,c:j.c,ct:j.ct,isP:false})),...Object.values(PP).map(par=>({id:par.id,n:par.n,c:'#F1EFE8',ct:'#444441',isP:true}))];
+  let h=`<div class="card-flush" style="padding:0 14px;">`;
+  all.forEach(ent=>{
+    const pos=getPos(ent.id,JORNADA);
+    const pt=PARTIDOS[pos-1];
+    const a=ap[ent.id];
+    const isMe=ent.id===p.id;
+    const isMePar=ent.id===p.p;
+    const canEdit=!BLOQUEADO&&(isMe||isMePar);
+    const editing=false;
+
+    let aBadge='';
+    if(pt.pleno){
+      const pap=ap['pleno_'+ent.id]||{};
+      aBadge=pap.l&&pap.v
+        ?`<span style="font-size:12px;font-weight:700;background:#e8e8ed;color:#1a1a1a;border:1.5px solid #c7c7cc;border-radius:6px;padding:2px 8px;">⭐${pap.l}-${pap.v}</span>`
+        :`<span style="font-size:13px;color:var(--text-ter);">—</span>`;
+    } else {
+      if(a){
+        let res='';
+        if(pt.c&&pt.r){
+          const ok=a===pt.r;
+          res=`<span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:${ok?'var(--green-bg)':'var(--red-bg)'};">
+            <i class="ti ti-${ok?'check':'x'}" style="font-size:12px;color:${ok?'var(--green-text)':'var(--red-text)'};" aria-hidden="true"></i>
+          </span>`;
+        }
+        aBadge=`<div style="display:flex;align-items:center;gap:4px;">
+          <span style="display:inline-flex;align-items:center;justify-content:center;height:30px;min-width:40px;font-size:14px;font-weight:800;border-radius:6px;background:#e8e8ed;color:#1a1a1a;border:1.5px solid #c7c7cc;${editing?'opacity:0.4;':''}">${a}</span>
+          ${res}
+        </div>`;
+      } else {
+        aBadge=`<span style="font-size:13px;color:var(--text-ter);">—</span>`;
+      }
+    }
+
+    const av=ent.isP
+      ?parejaAvHtml(PP[ent.id],28)
+      :(AVATARS[ent.id]
+        ?`<div style="width:28px;height:28px;border-radius:50%;background:url(${AVATARS[ent.id]}) center/cover;flex-shrink:0;border:1.5px solid ${isMe?'var(--blue)':'var(--border)'};"></div>`
+        :`<div class="av" style="width:28px;height:28px;font-size:9px;background:${ent.c};color:${ent.ct};">${ini(ent.n)}</div>`);
+
+    const editBtn=canEdit&&!editing&&!BLOQUEADO
+      ?`<i class="ti ti-pencil" style="font-size:14px;color:var(--blue);margin-left:2px;" aria-hidden="true"></i>`
+      :'';
+
+    const clickFn=canEdit&&!editing&&!BLOQUEADO
+      ?`onclick="S.step=${isMe?1:2};renderJornada();"`
+      :'';
+
+    h+=`<div class="global-row${isMe||isMePar?' me':''}" style="${isMe||isMePar?'cursor:pointer;':''}" ${clickFn}>
+      ${av}
+      <div style="flex:1;min-width:0;">
+        <p style="font-size:12px;font-weight:${isMe||isMePar?700:600};color:${isMe?'var(--blue-text)':isMePar?'var(--teal-text)':'var(--text)'};">
+          ${ent.n}${isMe?' 👈':''}${editing?' <span style="font-size:10px;font-weight:400;opacity:0.7;">editando...</span>':''}
+          ${editBtn}
+        </p>
+        <p style="font-size:10px;color:var(--text-sec);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${pos}. ${pt.pleno?'⭐ Pleno al 15':pt.l+' — '+pt.v}</p>
+      </div>
+      ${aBadge}
+    </div>`;
+  });
+  h+=`</div>`;
+  return h;
+}
+
+function partidoCardHtml(pos,key,isPareja,showConfirm=false){
+  const pt=PARTIDOS[pos-1];
+  const ap=(S.apuestas[JORNADA]||{})[key];
+  const tipo=isPareja?'par':'ind';
+
+  // Si es pareja, comprobar si el compañero ya la apostó
+  const p=jugador(S.player);
+  const comp=isPareja?JJ.find(j=>j.id!==p.id&&j.p===p.p):null;
+  const compYaApostoPar=isPareja&&comp&&(S.apuestas[JORNADA]||{})[key]&&(S.apuestas[JORNADA]||{})[comp.id];
+  // bloqueado si: global bloqueado, O si es pareja y el compañero ya puso la apuesta de pareja
+  const bloqCard=BLOQUEADO||(isPareja&&compYaApostoPar&&ap);
+
+  let resHtml='';
+  if(pt.c&&pt.r){
+    const ok=ap===pt.r;
+    resHtml=`<span style="display:inline-flex;align-items:center;gap:4px;margin-left:6px;">
+      <span class="badge ${ok?'b-green':'b-red'}">${pt.r}</span>
+      <span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:${ok?'var(--green-bg)':'var(--red-bg)'};">
+        <i class="ti ti-${ok?'check':'x'}" style="font-size:13px;color:${ok?'var(--green-text)':'var(--red-text)'};" aria-hidden="true"></i>
+      </span>
+    </span>`;
+  }
+
+  const btns=['1','X','2'].map(v=>{
+    const sel=ap===v?(v==='1'?' ap-1':v==='X'?' ap-x':' ap-2'):'';
+    const dis=(BLOQUEADO||bloqCard)?'disabled':'';
+    const opacStyle=bloqCard&&ap!==v?'opacity:0.3;':'';
+    return`<button class="ap-btn${sel}" ${dis} style="${opacStyle}${bloqCard?'cursor:not-allowed;':''}" onclick="setAp('${key}',${JORNADA},'${v}')">${v}</button>`;
+  }).join('');
+
+  const bloqMsg=bloqCard&&!BLOQUEADO
+    ?`<span style="display:inline-flex;align-items:center;gap:4px;font-size:12px;color:var(--text-sec);">
+        <i class="ti ti-lock" style="font-size:13px;" aria-hidden="true"></i>
+        Apostado por ${comp?comp.n:'tu pareja'}
+      </span>`
+    : ap
+      ?`<span style="font-size:13px;color:var(--text-sec);">Has apostado <strong style="color:var(--text);">${ap}</strong></span>`
+      :`<span style="font-size:13px;color:var(--text-ter);">Sin apostar</span>`;
+
+  return`<div class="partido-card partido-card-${tipo}" style="${bloqCard?'opacity:0.75;':''}">
+    <div class="partido-header partido-header-${tipo}">
+      Partido ${pos}${resHtml}
+      ${bloqCard&&!BLOQUEADO?`<span style="float:right;font-size:10px;font-weight:500;opacity:0.7;"><i class="ti ti-lock" aria-hidden="true"></i> Bloqueada</span>`:''}
+    </div>
+    <div class="partido-body">
+      <p class="partido-nombre">${pt.l} — ${pt.v}</p>
+      <div class="ap-row">
+        <div style="display:flex;gap:8px;">${btns}</div>
+        ${bloqMsg}
+      </div>
+    </div>
+  </div>`;
+}
+
+function plenoCardHtml(pos,key,isPareja){
+  const pt=PARTIDOS[pos-1];
+  const tipo=isPareja?'par':'ind';
+  const p=jugador(S.player);
+  const comp=isPareja?JJ.find(j=>j.id!==p.id&&j.p===p.p):null;
+  const apAll=S.apuestas[JORNADA]||{};
+
+  // Determinar si está bloqueado porque el compañero ya puso la pareja
+  const plenoKey='pleno_'+key;
+  const ap=apAll[plenoKey]||{l:null,v:null};
+  const compApostoPar=isPareja&&comp&&apAll[comp.id]&&ap.l&&ap.v;
+  const bloqCard=BLOQUEADO||compApostoPar;
+
+  const goles=['0','1','2','M'];
+  const btsLocal=goles.map(g=>{
+    const sel=ap.l===g?' ap-gol-sel':'';
+    const dis=bloqCard?'disabled':'';
+    const opac=bloqCard&&ap.l!==g?'opacity:0.3;':'';
+    return`<button class="ap-gol${sel}" ${dis} style="${opac}${bloqCard?'cursor:not-allowed;':''}" onclick="setPlenoGol('${plenoKey}','l','${g}')">${g}</button>`;
+  }).join('');
+  const btsVisit=goles.map(g=>{
+    const sel=ap.v===g?' ap-gol-sel':'';
+    const dis=bloqCard?'disabled':'';
+    const opac=bloqCard&&ap.v!==g?'opacity:0.3;':'';
+    return`<button class="ap-gol${sel}" ${dis} style="${opac}${bloqCard?'cursor:not-allowed;':''}" onclick="setPlenoGol('${plenoKey}','v','${g}')">${g}</button>`;
+  }).join('');
+
+  const completo=ap.l&&ap.v;
+  const resumen=completo?`<div style="margin-top:8px;display:flex;align-items:center;gap:6px;">
+    <span class="badge b-teal">⭐ Apuesta: ${ap.l} - ${ap.v}</span>
+    ${compApostoPar?`<span style="font-size:11px;color:var(--text-sec);display:flex;align-items:center;gap:3px;"><i class="ti ti-lock" style="font-size:12px;" aria-hidden="true"></i>Puesta por ${comp.n}</span>`:''}
+  </div>`:'';
+
+  return`<div class="partido-card partido-card-${tipo}" style="${bloqCard?'opacity:0.75;':''}">
+    <div class="partido-header partido-header-${tipo}" style="display:flex;align-items:center;justify-content:space-between;">
+      <span>Partido ${pos} · ⭐ Pleno al 15</span>
+      ${compApostoPar?`<span style="font-size:10px;font-weight:500;"><i class="ti ti-lock" aria-hidden="true"></i> Bloqueada</span>`:''}
+    </div>
+    <div class="partido-body">
+      ${!bloqCard?`<div class="alert alert-purple" style="margin-bottom:12px;padding:10px 12px;">
+        <i class="ti ti-star" style="font-size:16px;"></i>
+        <p style="font-size:12px;"><strong>¡Atención! Este es el Pleno al 15.</strong> No se elige 1X2. Elige los goles: <strong>0</strong>, <strong>1</strong>, <strong>2</strong> o <strong>M</strong> (3+). Ej: 3-1 → M y 1.</p>
+      </div>`:''}
+      <p class="partido-nombre">${pt.l} — ${pt.v}</p>
+      <div class="pleno-grid">
+        <div class="pleno-row">
+          <p class="pleno-team-label">⚽ ${pt.l}</p>
+          <div class="pleno-btns">${btsLocal}</div>
+        </div>
+        <div class="pleno-row">
+          <p class="pleno-team-label">⚽ ${pt.v.length>0?pt.v:'Visitante'}</p>
+          <div class="pleno-btns">${btsVisit}</div>
+        </div>
+      </div>
+      ${resumen}
+    </div>
+  </div>`;
+}
+
+function setAp(key,jornada,valor){
+  if(BLOQUEADO)return;
+  if(!S.apuestas[jornada])S.apuestas[jornada]={};
+  S.apuestas[jornada][key]=valor;
+  save();renderJornada();
+}
+
+function setPlenoGol(plenoKey,lado,valor){
+  if(BLOQUEADO)return;
+  if(!S.apuestas[JORNADA])S.apuestas[JORNADA]={};
+  if(!S.apuestas[JORNADA][plenoKey])S.apuestas[JORNADA][plenoKey]={l:null,v:null};
+  S.apuestas[JORNADA][plenoKey][lado]=valor;
+  save();renderJornada();
+}
+
+function confirmar(){
+  const p=jugador(S.player);
+  const ap=S.apuestas[JORNADA]||{};
+  const posInd=getPos(p.id,JORNADA);
+  const posPar=getPos(p.p,JORNADA);
+  const ptInd=PARTIDOS[posInd-1];
+  const ptPar=PARTIDOS[posPar-1];
+
+  // Comprobar si la pareja ya fue apostada por el compañero
+  const comp=JJ.find(j=>j.id!==p.id&&j.p===p.p);
+  const compYaApostoPar=comp&&ap[comp.id]&&ap[p.p];
+
+  // Validar apuesta individual
+  if(ptInd.pleno){
+    const pk='pleno_'+p.id;
+    const pap=ap[pk]||{};
+    if(!pap.l||!pap.v){alert('Selecciona los goles del Pleno al 15 (tu partido individual).');return;}
+  } else {
+    if(!ap[p.id]){alert('Selecciona tu apuesta individual primero.');return;}
+  }
+
+  // Validar apuesta de pareja (solo si el compañero no la ha puesto ya)
+  if(!compYaApostoPar){
+    if(ptPar.pleno){
+      const pkp='pleno_'+p.p;
+      const papp=ap[pkp]||{};
+      if(!papp.l||!papp.v){alert('Selecciona también los goles del Pleno al 15 de pareja (los dos equipos).');return;}
+    } else {
+      if(!ap[p.p]){alert('Selecciona también la apuesta de pareja antes de confirmar.');return;}
+    }
+  } else if(ptPar.pleno){
+    // Pareja ya apostada por compañero en pleno — consideramos válido
+  }
+
+  // Resumen para confirmación
+  const aInd=ptInd.pleno?(ap['pleno_'+p.id]||{}):(ap[p.id]||'');
+  const aPar=ptPar.pleno?(ap['pleno_'+p.p]||{}):(ap[p.p]||'');
+  const indText=ptInd.pleno?(aInd.l&&aInd.v?`⭐ ${aInd.l}-${aInd.v}`:'—'):aInd;
+  const parText=compYaApostoPar
+    ?`${aPar} (puesta por ${comp?comp.n:'tu pareja'})`
+    :ptPar.pleno?(aPar.l&&aPar.v?`⭐ ${aPar.l}-${aPar.v}`:'—'):aPar||'—';
+
+  const msg=`¿Confirmas tus apuestas?
+
+• Tu partido (P${posInd}): ${indText}
+• Pareja (P${posPar}): ${parText}
+
+No podrás cambiarlas después del jueves a las 22h.`;
+  if(!confirm(msg))return;
+
+  save();
+  _editingSlot=null;
+  renderJornada();
+}
+
+// ============ GLOBAL ============
+function renderGlobal(){
+  document.getElementById('global-jornada').textContent=JORNADA;
+  const ap=S.apuestas[JORNADA]||{};
+  const all=[...JJ.map(j=>({id:j.id,n:j.n,c:j.c,ct:j.ct,isP:false})),...Object.values(PP).map(p=>({id:p.id,n:p.n,c:'#F1EFE8',ct:'#444441',isP:true}))];
+  let h=`<p style="font-size:13px;color:var(--text-sec);margin-bottom:12px;">Lo que ha apostado cada uno esta jornada.</p><div class="card-flush" style="padding:0 16px;">`;
+  all.forEach(ent=>{
+    const pos=getPos(ent.id,JORNADA);
+    const pt=PARTIDOS[pos-1];
+    const a=ap[ent.id];
+    let aBadge,res='';
+    if(pt.pleno){
+      const pk='pleno_'+(ent.isP?ent.id:ent.id);
+      const pap=ap['pleno_'+ent.id]||{};
+      aBadge=pap.l&&pap.v?`<span class="badge b-teal">⭐ ${pap.l}-${pap.v}</span>`:`<span style="font-size:13px;color:var(--text-ter);">—</span>`;
+    } else {
+      aBadge=a?`<span style="display:inline-flex;align-items:center;justify-content:center;height:32px;min-width:44px;font-size:14px;font-weight:800;border-radius:var(--radius-xs);background:#e8e8ed;color:#1a1a1a;border:1.5px solid #c7c7cc;">${a}</span>`:`<span style="font-size:13px;color:var(--text-ter);">—</span>`;
+      if(pt.c&&pt.r&&a){const ok=a===pt.r;res=`<span class="badge ${ok?'b-green':'b-red'}" style="margin-left:4px;">${ok?'✓':'✗'}</span>`;}
+    }
+    h+=`<div class="global-row">
+      ${ent.isP ? parejaAvHtml(PP[ent.id],30) : avHtml(JJ.find(j=>j.id===ent.id)||{id:ent.id,c:ent.c,ct:ent.ct,n:ent.n},30)}
+      <div style="flex:1;min-width:0;">
+        <p style="font-size:13px;font-weight:600;color:var(--text);">${ent.n}</p>
+        <p style="font-size:11px;color:var(--text-sec);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${pos}. ${pt.pleno?'⭐ Pleno al 15 ('+pt.l+' - '+pt.v+')':pt.l+' — '+pt.v}</p>
+      </div>
+      ${aBadge}${res}
+    </div>`;
+  });
+  h+=`</div>`;
+
+  // Botón compartir por WhatsApp
+  h+=`<button class="btn btn-wa" style="margin-top:12px;" onclick="compartirWA()"><i class="ti ti-brand-whatsapp"></i>Compartir resumen por WhatsApp</button>`;
+  document.getElementById('pg-global').innerHTML=h;
+}
+
+function compartirWA(){
+  const ap=S.apuestas[JORNADA]||{};
+  let txt=`🎯 *Quiniela Familiar — Jornada ${JORNADA}*\n\n`;
+  JJ.forEach(j=>{
+    const pos=getPos(j.id,JORNADA);
+    const pt=PARTIDOS[pos-1];
+    let apuesta='—';
+    if(pt.pleno){const pk=ap['pleno_'+j.id]||{};if(pk.l&&pk.v)apuesta=`⭐${pk.l}-${pk.v}`;}
+    else{apuesta=ap[j.id]||'—';}
+    const check=pt.c&&pt.r&&ap[j.id]?(ap[j.id]===pt.r?'✅':'❌'):'';
+    txt+=`${j.n}: *${apuesta}* ${check}\n`;
+  });
+  txt+=`\n📊 Ver clasificación en la app`;
+  const url=`https://wa.me/?text=${encodeURIComponent(txt)}`;
+  window.open(url,'_blank');
+}
+
+// ============ RANKING ============
+function renderRanking(){
+  const pts={};JJ.forEach(j=>{pts[j.id]=0;});
+  for(let jornada=1;jornada<=JORNADA;jornada++){
+    const ap=S.apuestas[jornada]||{};
+    JJ.forEach(jj=>{
+      const pos=getPos(jj.id,jornada);
+      const pt=PARTIDOS[pos-1];
+      if(pt.pleno){
+        // pleno: exacto si ambos goles coinciden
+        const pk=ap['pleno_'+jj.id]||{};
+        if(pt.r&&pk.l===pt.r.split('-')[0]&&pk.v===pt.r.split('-')[1])pts[jj.id]+=1;
+      } else {
+        if(pt.r&&ap[jj.id]===pt.r)pts[jj.id]+=1;
+      }
+    });
+    Object.values(PP).forEach(par=>{
+      const pos=getPos(par.id,jornada);
+      const pt=PARTIDOS[pos-1];
+      if(!pt.pleno&&pt.r&&ap[par.id]===pt.r)par.m.forEach(mid=>{pts[mid]+=0.5;});
+    });
+  }
+  const sorted=[...JJ].sort((a,b)=>(pts[b.id]||0)-(pts[a.id]||0));
+  const me=S.player;
+  let h=`<div class="safe-top"></div>
+  <div class="topbar">
+    <h2 style="font-size:22px;font-weight:700;color:var(--text);margin-bottom:2px;">Clasificación</h2>
+    <p style="font-size:13px;color:var(--text-sec);">Temporada 2025-26 · Jornada ${JORNADA}</p>
+  </div>
+  <div class="page" style="padding-top:8px;"><div class="card-flush" style="padding:0 16px;">`;
+  sorted.forEach((j,i)=>{
+    const isMe=j.id===me;
+    const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
+    h+=`<div class="rank-row${isMe?' me':''}">
+      <span style="font-size:${medal?'18':'14'}px;font-weight:700;width:26px;text-align:center;color:${isMe?'var(--blue-text)':'var(--text-sec)'};">${medal||i+1}</span>
+      ${avHtml(j,34)}
+      <span style="flex:1;font-size:15px;font-weight:${isMe?700:500};color:${isMe?'var(--blue-text)':'var(--text)'};">${j.n}${isMe?' 👈':''}</span>
+      <span style="font-size:18px;font-weight:700;color:${isMe?'var(--blue-text)':'var(--text)'};">${(pts[j.id]||0).toFixed(1)}</span>
+      <span style="font-size:12px;color:var(--text-sec);margin-left:2px;">pts</span>
+    </div>`;
+  });
+  h+=`</div>
+
+  <button class="btn btn-wa" style="margin-top:12px;" onclick="compartirClasificacion()">
+    <i class="ti ti-camera"></i>Ver tarjeta para compartir
+  </button>
+  </div>`;
+  document.getElementById('tab-ranking').innerHTML=h;
+}
+
+function compartirClasificacion(){
+  const pts={};JJ.forEach(j=>{pts[j.id]=0;});
+  for(let jornada=1;jornada<=JORNADA;jornada++){
+    const apj=S.apuestas[jornada]||{};
+    JJ.forEach(jj=>{const pos=getPos(jj.id,jornada);const pt=PARTIDOS[pos-1];if(!pt.pleno&&pt.r&&apj[jj.id]===pt.r)pts[jj.id]+=1;});
+    Object.values(PP).forEach(par=>{const pos=getPos(par.id,jornada);const pt=PARTIDOS[pos-1];if(!pt.pleno&&pt.r&&apj[par.id]===pt.r)par.m.forEach(mid=>{pts[mid]+=0.5;});});
+  }
+  const sorted=[...JJ].sort((a,b)=>(pts[b.id]||0)-(pts[a.id]||0));
+  const me=S.player;
+  document.getElementById('share-subtitle').textContent='Clasificación · Jornada '+JORNADA+' · LaLiga 2025-26';
+  const top3=sorted.slice(0,3);
+  const rest=sorted.slice(3);
+  const medals=['🥇','🥈','🥉'];
+  const podioColors=['#FFD700','#C0C0C0','#CD7F32'];
+  const podioSizes=[68,54,54];
+  const podioHeights=[48,36,26];
+  const podioOrder=[1,0,2];
+  let podioHtml='';
+  podioOrder.forEach(idx=>{
+    const j=top3[idx];if(!j)return;
+    const size=podioSizes[idx];
+    const ph=podioHeights[idx];
+    const col=podioColors[idx];
+    const av=AVATARS[j.id]?`<img src="${AVATARS[j.id]}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`:`<div style="width:100%;height:100%;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:${Math.round(size*0.22)}px;background:${j.c};color:${j.ct};">${ini(j.n)}</div>`;
+    podioHtml+=`<div style="display:flex;flex-direction:column;align-items:center;gap:5px;${idx===0?'margin-bottom:0;':''}">
+      <div style="position:relative;">
+        <div style="width:${size}px;height:${size}px;border-radius:50%;border:3px solid ${col};overflow:hidden;">${av}</div>
+        <span style="position:absolute;top:-6px;right:-6px;font-size:${idx===0?20:16}px;">${medals[idx]}</span>
+      </div>
+      <p style="font-size:${idx===0?12:10}px;font-weight:700;color:#fff;text-align:center;max-width:${size+10}px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${j.n}</p>
+      <p style="font-size:9px;color:${idx===0?col:'rgba(255,255,255,0.45)'};font-weight:${idx===0?700:400};text-align:center;">${(pts[j.id]||0).toFixed(1)} pts</p>
+      <div style="width:${size+8}px;height:${ph}px;background:${col}22;border:0.5px solid ${col}55;border-radius:8px 8px 0 0;display:flex;align-items:center;justify-content:center;">
+        <span style="font-size:${idx===0?20:14}px;font-weight:700;color:${col};">${idx+1}</span>
+      </div>
+    </div>`;
+  });
+  document.getElementById('share-podio').innerHTML=podioHtml;
+  let listaHtml='';
+  rest.forEach((j,i)=>{
+    const isMe=j.id===me;
+    const av=AVATARS[j.id]?`<img src="${AVATARS[j.id]}" style="width:28px;height:28px;border-radius:50%;object-fit:cover;">`:`<div style="width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:9px;background:${j.c};color:${j.ct};">${ini(j.n)}</div>`;
+    listaHtml+=`<div style="display:flex;align-items:center;gap:10px;background:${isMe?'rgba(55,138,221,0.15)':'rgba(255,255,255,0.05)'};border:0.5px solid ${isMe?'rgba(55,138,221,0.3)':'rgba(255,255,255,0.06)'};border-radius:10px;padding:7px 10px;">
+      <span style="font-size:12px;font-weight:700;color:${isMe?'#378ADD':'rgba(255,255,255,0.3)'};width:16px;text-align:center;">${i+4}</span>
+      ${av}
+      <span style="flex:1;font-size:12px;font-weight:600;color:${isMe?'#7BB8EE':'#fff'};">${j.n}${isMe?' 👈':''}</span>
+      <span style="font-size:13px;font-weight:700;color:${isMe?'#378ADD':'#fff'};">${(pts[j.id]||0).toFixed(1)}</span>
+      <span style="font-size:9px;color:rgba(255,255,255,0.3);margin-left:2px;">pts</span>
+    </div>`;
+  });
+  document.getElementById('share-lista').innerHTML=listaHtml;
+  goTo('s-share');
+}
+
+// ============ YO ============
+function renderYo(){
+  const p=jugador(S.player);if(!p)return;
+  let h=`<div class="safe-top"></div>
+  <div class="topbar" style="text-align:center;padding-bottom:12px;">
+    ${AVATARS[p.id] ? `<div class="av" style="width:80px;height:80px;border-radius:50%;background:url(${AVATARS[p.id]}) center/cover;border:3px solid #fff;box-shadow:0 2px 12px rgba(0,0,0,0.15);margin:0 auto;"></div>` : avHtml(p,80)}
+    <p style="font-size:20px;font-weight:700;color:var(--text);margin-top:8px;">${p.n}</p>
+    <p style="font-size:13px;color:var(--text-sec);">${PP[p.p].n}</p>
+  </div>
+  <div class="page" style="padding-top:8px;"><p class="sec-label">Historial de apuestas</p>`;
+
+  for(let j=1;j<=JORNADA;j++){
+    const ap=S.apuestas[j]||{};
+    const posInd=getPos(p.id,j);
+    const posPar=getPos(p.p,j);
+    const ptInd=PARTIDOS[posInd-1];
+    const ptPar=PARTIDOS[posPar-1];
+    const aInd=ap[p.id];
+    const aPar=ap[p.p];
+
+    const apBadge=(a,pt)=>{
+      if(pt.pleno){
+        const pk=ap['pleno_'+p.id]||{};
+        return pk.l&&pk.v?`<span class="badge b-teal">⭐ ${pk.l}-${pk.v}</span>`:`<span style="color:var(--text-ter);">—</span>`;
+      }
+      return a?`<span class="hist-ap">${a}</span>`:`<span style="font-size:14px;color:var(--text-ter);">—</span>`;
+    };
+    const resBadge=(a,pt)=>(!pt.pleno&&pt.c&&pt.r&&a)?`<span class="badge ${a===pt.r?'b-green':'b-red'}" style="margin-left:6px;">${a===pt.r?'+pts':'✗'}</span>`:'';
+
+    h+=`<div class="card">
+      <p style="font-size:12px;font-weight:600;color:var(--text-sec);margin-bottom:10px;">Jornada ${j}</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+        <div>
+          <p style="font-size:10px;font-weight:700;color:var(--blue-text);text-transform:uppercase;margin-bottom:3px;">Tu partido ${ptInd.pleno?'⭐':''} (P${posInd})</p>
+          <p style="font-size:12px;color:var(--text-sec);margin-bottom:6px;line-height:1.4;">${ptInd.l} — ${ptInd.v}</p>
+          <div style="display:flex;align-items:center;">${apBadge(aInd,ptInd)}${resBadge(aInd,ptInd)}</div>
+        </div>
+        <div>
+          <p style="font-size:10px;font-weight:700;color:var(--teal-text);text-transform:uppercase;margin-bottom:3px;">Pareja ${ptPar.pleno?'⭐':''} (P${posPar})</p>
+          <p style="font-size:12px;color:var(--text-sec);margin-bottom:6px;line-height:1.4;">${ptPar.l} — ${ptPar.v}</p>
+          <div style="display:flex;align-items:center;">${apBadge(aPar,ptPar)}${resBadge(aPar,ptPar)}</div>
+        </div>
+      </div>
+    </div>`;
+  }
+  h+=`<button class="btn btn-secondary" onclick="logout()" style="margin-top:4px;"><i class="ti ti-logout"></i>Cambiar de perfil</button></div>`;
+  document.getElementById('tab-yo').innerHTML=h;
+}
+
+// ============ INIT ============
+renderLogin();
+</script>
+</body>
+</html>
