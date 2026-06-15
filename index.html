@@ -96,6 +96,7 @@
   .modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:200;display:flex;align-items:flex-end;justify-content:center;}
   .modal-sheet{background:var(--card);border-radius:20px 20px 0 0;padding:24px 20px 40px;width:100%;max-width:480px;box-shadow:0 -4px 24px rgba(0,0,0,0.15);}
   .topbar{padding:12px 16px 8px;background:var(--bg);position:sticky;top:0;z-index:50;}
+  @keyframes spin{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
   .splash-icon{width:80px;height:80px;border-radius:50%;background:var(--blue-bg);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;}
   .help-step{display:flex;gap:14px;padding:14px 0;border-bottom:0.5px solid var(--border-light);}
   .help-step:last-child{border-bottom:none;}
@@ -106,6 +107,12 @@
   .pleno-team-label{font-size:13px;font-weight:600;color:var(--text-sec);white-space:nowrap;min-width:88px;flex-shrink:0;}
   .pleno-btns{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;flex:1;}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPA_URL = 'https://fpcthmmnnwzhvcgyngqr.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZwY3RobW1ubnd6aHZjZ3luZ3FyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0MTM5NzQsImV4cCI6MjA5Njk4OTk3NH0.Kasr04rGiIy62QjGKxjg3BtKkkIKWodO-le4y86S588';
+const supa = supabase.createClient(SUPA_URL, SUPA_KEY);
+</script>
 </head>
 <body>
 <div id="app">
@@ -409,8 +416,12 @@ function renderLogin(){
     </div>`;
 }
 
-function login(pid){
-  S.player=pid;save();navTo('jornada');
+async function login(pid){
+  S.player=pid;save();
+  // Show loading
+  document.getElementById('login-list').innerHTML='<div style="text-align:center;padding:40px;color:var(--text-sec);"><i class="ti ti-loader" style="font-size:32px;animation:spin 1s linear infinite;"></i><p style="margin-top:12px;font-size:14px;">Cargando apuestas...</p></div>';
+  await loadApuestasFromDB(JORNADA);
+  navTo('jornada');
 }
 function logout(){S.player=null;save();renderLogin();goTo('s-login');}
 
@@ -589,6 +600,7 @@ function skipPareja(){
   if(!S.apuestas[JORNADA])S.apuestas[JORNADA]={};
   S.apuestas[JORNADA]['_skip_'+p.p]=p.id;
   save();
+  saveEstado(JORNADA, '_skip_'+p.p, p.id);
   // Show modal with summary before going to step 3
   const posInd=getPos(p.id,JORNADA);
   const ptInd=PARTIDOS[posInd-1];
@@ -673,9 +685,30 @@ function closeModal(){
   document.getElementById('modal-confirm').style.display='none';
 }
 
-function confirmarFinal(){
+async function confirmarFinal(){
   closeModal();
   window._skipMode=false;
+  // Save all pending apuestas to DB
+  const p=jugador(S.player);
+  const ap=S.apuestas[JORNADA]||{};
+  const posInd=getPos(p.id,JORNADA);
+  const posPar=getPos(p.p,JORNADA);
+  const ptInd=PARTIDOS[posInd-1];
+  const ptPar=PARTIDOS[posPar-1];
+  // Individual
+  if(!ptInd.pleno && ap[p.id]) await saveApuesta(JORNADA, p.id, ap[p.id]);
+  // Pareja
+  if(!ptPar.pleno && ap[p.p]) await saveApuesta(JORNADA, p.p, ap[p.p]);
+  // Pleno individual
+  if(ptInd.pleno) {
+    const pk=ap['pleno_'+p.id]||{};
+    if(pk.l&&pk.v) await savePlenoApuesta(JORNADA, p.id, pk.l, pk.v);
+  }
+  // Pleno pareja
+  if(ptPar.pleno) {
+    const pk=ap['pleno_'+p.p]||{};
+    if(pk.l&&pk.v) await savePlenoApuesta(JORNADA, p.p, pk.l, pk.v);
+  }
   S.step=3;save();renderJornada();
 }
 
@@ -867,7 +900,12 @@ function setAp(key,jornada,valor){
   if(BLOQUEADO)return;
   if(!S.apuestas[jornada])S.apuestas[jornada]={};
   S.apuestas[jornada][key]=valor;
-  save();renderJornada();
+  save();
+  // Check if it's a pareja key (p1, p2, etc) or individual
+  const isPareja = Object.keys(PP).includes(key);
+  const pt = PARTIDOS[getPos(key, jornada)-1];
+  if(!pt?.pleno) saveApuesta(jornada, key, valor);
+  renderJornada();
 }
 
 function setPlenoGol(plenoKey,lado,valor){
@@ -875,7 +913,12 @@ function setPlenoGol(plenoKey,lado,valor){
   if(!S.apuestas[JORNADA])S.apuestas[JORNADA]={};
   if(!S.apuestas[JORNADA][plenoKey])S.apuestas[JORNADA][plenoKey]={l:null,v:null};
   S.apuestas[JORNADA][plenoKey][lado]=valor;
-  save();renderJornada();
+  save();
+  // Save to DB if both sides filled
+  const ap = S.apuestas[JORNADA][plenoKey];
+  const parejaId = plenoKey.replace('pleno_','');
+  if(ap.l && ap.v) savePlenoApuesta(JORNADA, parejaId, ap.l, ap.v);
+  renderJornada();
 }
 
 function confirmar(){
