@@ -333,21 +333,21 @@ const PP={
 };
 const ORDEN0=['deborah','alexander','virginia','ivan','jonathan','daniel','nines','felix','mari','javier','p1','p2','p3','p4','p5'];
 const PARTIDOS=[
-  {l:'Real Madrid',    v:'Barcelona',      r:'1', c:true},
-  {l:'Atlético',       v:'Sevilla',        r:'X', c:true},
-  {l:'Valencia',       v:'Villarreal',     r:'2', c:true},
-  {l:'Athletic Club',  v:'Real Sociedad',  r:null,c:false},
-  {l:'Betis',          v:'Getafe',         r:null,c:false},
-  {l:'Osasuna',        v:'Celta Vigo',     r:null,c:false},
-  {l:'Girona',         v:'Rayo Vallecano', r:null,c:false},
-  {l:'Mallorca',       v:'Las Palmas',     r:null,c:false},
-  {l:'Leganés',        v:'Espanyol',       r:null,c:false},
-  {l:'Valladolid',     v:'Alavés',         r:null,c:false},
-  {l:'Real Sociedad',  v:'Atlético',       r:null,c:false},
-  {l:'Sevilla',        v:'Valencia',       r:null,c:false},
-  {l:'Villarreal',     v:'Athletic',       r:null,c:false},
-  {l:'Getafe',         v:'Betis',          r:null,c:false},
-  {l:'Real Madrid',    v:'Atlético',       r:null,c:false, pleno:true}, // Pleno al 15
+  {l:'Chequia',         v:'Sudáfrica',      r:null, c:false},
+  {l:'México',          v:'Corea del Sur',  r:null, c:false},
+  {l:'Suiza',           v:'Bosnia-Herz.',   r:null, c:false},
+  {l:'Canadá',          v:'Catar',          r:null, c:false},
+  {l:'Escocia',         v:'Marruecos',      r:null, c:false},
+  {l:'Brasil',          v:'Haití',          r:null, c:false},
+  {l:'EE.UU.',          v:'Australia',      r:null, c:false},
+  {l:'Turquía',         v:'Paraguay',       r:null, c:false},
+  {l:'Alemania',        v:'Costa de Marfil',r:null, c:false},
+  {l:'Ecuador',         v:'Noruega',        r:null, c:false},
+  {l:'España',          v:'Cabo Verde',     r:null, c:false},
+  {l:'Arabia Saudí',    v:'Uruguay',        r:null, c:false},
+  {l:'Colombia',        v:'Uzbekistán',     r:null, c:false},
+  {l:'Portugal',        v:'DR Congo',       r:null, c:false},
+  {l:'Inglaterra',      v:'Croacia',        r:null, c:false, pleno:true},
 ];
 let JORNADA=1; // current active jornada
 const JORNADA_ACTUAL=1; // jornada real actual
@@ -1326,15 +1326,113 @@ function compartirClasificacion(){
 // ============ YO ============
 function renderYo(){
   const p=jugador(S.player);if(!p)return;
+
+  // ---- Calcular estadísticas ----
+  let totalInd=0, aciertosInd=0, totalPar=0, aciertosPar=0, plenosAcertados=0;
+  let mejorJornada=0, mejorJornadaN=0, rachaActual=0, rachMax=0;
+  let racha=0;
+
+  for(let j=1;j<=JORNADA_ACTUAL;j++){
+    const ap=S.apuestas[j]||{};
+    const posInd=getPos(p.id,j);
+    const posPar=getPos(p.p,j);
+    const ptInd=PARTIDOS[posInd-1];
+    const ptPar=PARTIDOS[posPar-1];
+    let ptsJornada=0;
+
+    // Individual
+    if(ptInd&&ptInd.c&&ptInd.r){
+      totalInd++;
+      if(!ptInd.pleno&&ap[p.id]===ptInd.r){aciertosInd++;ptsJornada++;}
+      if(ptInd.pleno){
+        const pk=ap['pleno_'+p.id]||{};
+        if(pk.l===ptInd.r?.split('-')[0]&&pk.v===ptInd.r?.split('-')[1]){plenosAcertados++;ptsJornada++;}
+      }
+    }
+    // Pareja
+    if(ptPar&&ptPar.c&&ptPar.r&&!ptPar.pleno){
+      totalPar++;
+      if(ap[p.p]===ptPar.r){aciertosPar++;ptsJornada+=0.5;}
+    }
+
+    if(ptsJornada>mejorJornada){mejorJornada=ptsJornada;mejorJornadaN=j;}
+    if(ptsJornada>0){racha++;rachMax=Math.max(rachMax,racha);}
+    else racha=0;
+  }
+  rachaActual=racha;
+
+  const pctInd=totalInd>0?Math.round(aciertosInd/totalInd*100):0;
+  const pctPar=totalPar>0?Math.round(aciertosPar/totalPar*100):0;
+  const pctTotal=((totalInd+totalPar)>0)?Math.round((aciertosInd+aciertosPar)/(totalInd+totalPar)*100):0;
+
   let h=`<div class="safe-top"></div>
   <div class="topbar" style="text-align:center;padding-bottom:12px;">
-    ${AVATARS[p.id] ? `<div class="av" style="width:80px;height:80px;border-radius:50%;background:url(${AVATARS[p.id]}) center/cover;border:3px solid #fff;box-shadow:0 2px 12px rgba(0,0,0,0.15);margin:0 auto;"></div>` : avHtml(p,80)}
+    ${AVATARS[p.id]?`<div style="width:72px;height:72px;border-radius:50%;background:url(${AVATARS[p.id]}) center/cover;border:3px solid var(--border);box-shadow:0 2px 12px rgba(0,0,0,0.12);margin:0 auto 8px;"></div>`:avHtml(p,72)}
     <p style="font-size:20px;font-weight:700;color:var(--text);margin-top:8px;">${p.n}</p>
     <p style="font-size:13px;color:var(--text-sec);">${PP[p.p].n}</p>
   </div>
-  <div class="page" style="padding-top:8px;"><p class="sec-label">Historial de apuestas</p>`;
+  <div class="page" style="padding-top:4px;">`;
 
-  for(let j=1;j<=JORNADA;j++){
+  // ---- Stats cards ----
+  h+=`<p class="sec-label">Tu temporada</p>`;
+
+  // Big % total
+  h+=`<div style="background:var(--blue-bg);border-radius:var(--radius);padding:16px 20px;margin-bottom:12px;display:flex;align-items:center;gap:16px;">
+    <div style="width:64px;height:64px;border-radius:50%;background:var(--blue);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+      <p style="font-size:20px;font-weight:800;color:white;">${pctTotal}%</p>
+    </div>
+    <div>
+      <p style="font-size:16px;font-weight:700;color:var(--blue-text);">Acierto global</p>
+      <p style="font-size:13px;color:var(--blue-text);opacity:0.7;">${aciertosInd+aciertosPar} de ${totalInd+totalPar} partidos acertados</p>
+    </div>
+  </div>`;
+
+  // Stats grid
+  h+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+    <div class="card" style="text-align:center;padding:14px 10px;margin-bottom:0;">
+      <p style="font-size:24px;font-weight:800;color:var(--text);">${pctInd}%</p>
+      <p style="font-size:12px;color:var(--text-sec);margin-top:2px;">Acierto individual</p>
+      <p style="font-size:11px;color:var(--text-ter);">${aciertosInd}/${totalInd} partidos</p>
+    </div>
+    <div class="card" style="text-align:center;padding:14px 10px;margin-bottom:0;">
+      <p style="font-size:24px;font-weight:800;color:var(--teal-text);">${pctPar}%</p>
+      <p style="font-size:12px;color:var(--text-sec);margin-top:2px;">Acierto de pareja</p>
+      <p style="font-size:11px;color:var(--text-ter);">${aciertosPar}/${totalPar} partidos</p>
+    </div>
+    <div class="card" style="text-align:center;padding:14px 10px;margin-bottom:0;">
+      <p style="font-size:24px;font-weight:800;color:var(--orange-text);">${rachMax}</p>
+      <p style="font-size:12px;color:var(--text-sec);margin-top:2px;">Mejor racha</p>
+      <p style="font-size:11px;color:var(--text-ter);">jornadas seguidas</p>
+    </div>
+    <div class="card" style="text-align:center;padding:14px 10px;margin-bottom:0;">
+      <p style="font-size:24px;font-weight:800;color:var(--purple-text);">⭐ ${plenosAcertados}</p>
+      <p style="font-size:12px;color:var(--text-sec);margin-top:2px;">Plenos al 15</p>
+      <p style="font-size:11px;color:var(--text-ter);">acertados</p>
+    </div>
+  </div>`;
+
+  // Mejor jornada
+  if(mejorJornadaN>0){
+    h+=`<div class="card" style="display:flex;align-items:center;gap:14px;margin-bottom:12px;">
+      <div style="width:44px;height:44px;border-radius:50%;background:var(--green-bg);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        <i class="ti ti-trophy" style="font-size:22px;color:var(--green-text);"></i>
+      </div>
+      <div>
+        <p style="font-size:14px;font-weight:600;color:var(--text);">Mejor jornada</p>
+        <p style="font-size:13px;color:var(--text-sec);">Jornada ${mejorJornadaN} · <strong>${mejorJornada} pts</strong></p>
+      </div>
+    </div>`;
+  }
+
+  if(rachaActual>0){
+    h+=`<div class="alert alert-success" style="margin-bottom:12px;"><i class="ti ti-flame"></i><p>¡Llevas <strong>${rachaActual} jornada${rachaActual>1?'s':''}</strong> seguida${rachaActual>1?'s':''} sumando puntos!</p></div>`;
+  }
+
+  // ---- Historial ----
+  h+=`<p class="sec-label" style="margin-top:8px;">Historial de apuestas</p>`;
+
+  let hayHistorial=false;
+  for(let j=JORNADA_ACTUAL;j>=1;j--){
     const ap=S.apuestas[j]||{};
     const posInd=getPos(p.id,j);
     const posPar=getPos(p.p,j);
@@ -1342,33 +1440,51 @@ function renderYo(){
     const ptPar=PARTIDOS[posPar-1];
     const aInd=ap[p.id];
     const aPar=ap[p.p];
+    if(!aInd&&!aPar) continue;
+    hayHistorial=true;
 
-    const apBadge=(a,pt)=>{
-      if(pt.pleno){
-        const pk=ap['pleno_'+p.id]||{};
-        return pk.l&&pk.v?`<span class="badge b-teal">⭐ ${pk.l}-${pk.v}</span>`:`<span style="color:var(--text-ter);">—</span>`;
-      }
-      return a?`<span class="hist-ap">${a}</span>`:`<span style="font-size:14px;color:var(--text-ter);">—</span>`;
+    const esP1=ptInd?.pleno;const esP2=ptPar?.pleno;
+
+    const apBadge=(a,pt,isPleno)=>{
+      if(isPleno){const pk=ap['pleno_'+p.id]||{};return pk.l&&pk.v?`<span class="badge b-teal">⭐${pk.l}-${pk.v}</span>`:`<span style="color:var(--text-ter);">—</span>`;}
+      if(!a)return`<span style="color:var(--text-ter);">—</span>`;
+      const cls=a==='1'?'ap-1':a==='X'?'ap-x':'ap-2';
+      return`<span style="display:inline-flex;align-items:center;justify-content:center;height:30px;min-width:40px;border-radius:6px;font-size:13px;font-weight:800;" class="${cls}">${a}</span>`;
     };
-    const resBadge=(a,pt)=>(!pt.pleno&&pt.c&&pt.r&&a)?`<span class="badge ${a===pt.r?'b-green':'b-red'}" style="margin-left:6px;">${a===pt.r?'+pts':'✗'}</span>`:'';
+    const resBadge=(a,pt)=>{
+      if(!pt?.c||!pt?.r||!a||pt.pleno)return'';
+      const ok=a===pt.r;
+      return`<span class="badge ${ok?'b-green':'b-red'}" style="margin-left:5px;">${ok?'✓':'✗'}</span>`;
+    };
 
-    h+=`<div class="card">
+    h+=`<div class="card" style="margin-bottom:8px;">
       <p style="font-size:12px;font-weight:600;color:var(--text-sec);margin-bottom:10px;">Jornada ${j}</p>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
         <div>
-          <p style="font-size:10px;font-weight:700;color:var(--blue-text);text-transform:uppercase;margin-bottom:3px;">Tu partido ${ptInd.pleno?'⭐':''} (P${posInd})</p>
-          <p style="font-size:12px;color:var(--text-sec);margin-bottom:6px;line-height:1.4;">${ptInd.l} — ${ptInd.v}</p>
-          <div style="display:flex;align-items:center;">${apBadge(aInd,ptInd)}${resBadge(aInd,ptInd)}</div>
+          <p style="font-size:10px;font-weight:700;color:var(--blue-text);text-transform:uppercase;margin-bottom:3px;">Tu partido</p>
+          <p style="font-size:11px;color:var(--text-sec);margin-bottom:5px;line-height:1.4;">${ptInd?ptInd.l+' — '+ptInd.v:'—'}</p>
+          <div style="display:flex;align-items:center;">${apBadge(aInd,ptInd,esP1)}${resBadge(aInd,ptInd)}</div>
         </div>
         <div>
-          <p style="font-size:10px;font-weight:700;color:var(--teal-text);text-transform:uppercase;margin-bottom:3px;">Pareja ${ptPar.pleno?'⭐':''} (P${posPar})</p>
-          <p style="font-size:12px;color:var(--text-sec);margin-bottom:6px;line-height:1.4;">${ptPar.l} — ${ptPar.v}</p>
-          <div style="display:flex;align-items:center;">${apBadge(aPar,ptPar)}${resBadge(aPar,ptPar)}</div>
+          <p style="font-size:10px;font-weight:700;color:var(--teal-text);text-transform:uppercase;margin-bottom:3px;">Pareja</p>
+          <p style="font-size:11px;color:var(--text-sec);margin-bottom:5px;line-height:1.4;">${ptPar?ptPar.l+' — '+ptPar.v:'—'}</p>
+          <div style="display:flex;align-items:center;">${apBadge(aPar,ptPar,esP2)}${resBadge(aPar,ptPar)}</div>
         </div>
       </div>
     </div>`;
   }
-  h+=`<button class="btn btn-secondary" onclick="logout()" style="margin-top:4px;"><i class="ti ti-logout"></i>Cambiar de perfil</button></div>`;
+
+  if(!hayHistorial){
+    h+=`<div style="text-align:center;padding:24px;color:var(--text-ter);">
+      <i class="ti ti-history" style="font-size:32px;display:block;margin-bottom:8px;"></i>
+      <p style="font-size:14px;">Aún no hay apuestas registradas</p>
+    </div>`;
+  }
+
+  h+=`<button class="btn btn-secondary" onclick="logout()" style="margin-top:8px;">
+    <i class="ti ti-logout"></i>Cambiar de perfil
+  </button></div>`;
+
   document.getElementById('tab-yo').innerHTML=h;
 }
 
