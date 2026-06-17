@@ -349,8 +349,40 @@ const PARTIDOS=[
   {l:'Getafe',         v:'Betis',          r:null,c:false},
   {l:'Real Madrid',    v:'Atlético',       r:null,c:false, pleno:true}, // Pleno al 15
 ];
-const JORNADA=1;
-const BLOQUEADO=false;
+let JORNADA=1; // current active jornada
+const JORNADA_ACTUAL=1; // jornada real actual
+// Bloqueo automático: jueves 22h - domingo 23:59h
+function calcularBloqueado(){
+  const now = new Date();
+  const day = now.getDay(); // 0=dom, 1=lun, 2=mar, 3=mie, 4=jue, 5=vie, 6=sab
+  const hour = now.getHours();
+  // Bloqueado desde jueves 22h hasta lunes 00h
+  if(day === 4 && hour >= 22) return true; // jueves desde 22h
+  if(day === 5) return true; // viernes
+  if(day === 6) return true; // sábado
+  if(day === 0) return true; // domingo
+  return false;
+}
+const BLOQUEADO = calcularBloqueado();
+
+// Texto del countdown para mostrar cuánto queda
+function textoBloqueo(){
+  const now = new Date();
+  const day = now.getDay();
+  const hour = now.getHours();
+  const min = now.getMinutes();
+  if(BLOQUEADO) return 'Apuestas cerradas';
+  // Calcular horas hasta el jueves 22h
+  const diasHastaJueves = (4 - day + 7) % 7 || 7;
+  const horasRestantes = (diasHastaJueves - 1) * 24 + (22 - hour);
+  if(horasRestantes <= 24){
+    const mins = 60 - min;
+    const horas = 22 - hour - 1;
+    return `Cierra en ${horas}h ${mins}min`;
+  }
+  const dias = Math.floor(horasRestantes / 24);
+  return `Cierra el jueves a las 22h`;
+}
 
 // ============ STATE ============
 let S={player:null,apuestas:{},step:1}; // step: 1=individual, 2=pareja, 3=global
@@ -407,6 +439,20 @@ function navTo(tab){
 }
 
 // ============ LOGIN ============
+
+async function cambiarJornada(j){
+  JORNADA = j;
+  const p = jugador(S.player);
+  if(!p) return;
+  // Load data for selected jornada
+  document.getElementById('tab-jornada').innerHTML='<div style="text-align:center;padding:60px 20px;"><i class="ti ti-loader" style="font-size:32px;color:var(--text-sec);animation:spin 1s linear infinite;"></i><p style="margin-top:12px;font-size:14px;color:var(--text-sec);">Cargando jornada '+j+'...</p></div>';
+  await Promise.all([
+    cargarPartidosAPI(),
+    loadApuestasFromDB(j)
+  ]);
+  renderStep3(p);
+}
+
 function renderLogin(){
   const ap=S.apuestas[JORNADA]||{};
   document.getElementById('login-list').innerHTML=`
@@ -422,6 +468,88 @@ function renderLogin(){
     </div>`;
 }
 
+
+
+// ============ API-FOOTBALL ============
+const API_FB_KEY = 'c5334bfe32c373bf75f91ae4bfc0fcb3';
+const API_FB_URL = 'https://v3.football.api-sports.io';
+const LALIGA_ID = 140; // LaLiga ID
+const SEASON = 2025;
+
+async function fetchPartidosJornada(jornada){
+  try {
+    const res = await fetch(`${API_FB_URL}/fixtures?league=${LALIGA_ID}&season=${SEASON}&round=Regular Season - ${jornada}`, {
+      headers: {
+        'x-apisports-key': API_FB_KEY
+      }
+    });
+    const data = await res.json();
+    if(!data.response || data.response.length === 0) return null;
+
+    // Map to our PARTIDOS format
+    const partidos = data.response.slice(0, 14).map(f => {
+      const status = f.fixture.status.short;
+      const cerrado = ['FT','AET','PEN'].includes(status);
+      let resultado = null;
+      if(cerrado){
+        const gl = f.goals.home;
+        const gv = f.goals.away;
+        if(gl > gv) resultado = '1';
+        else if(gl === gv) resultado = 'X';
+        else resultado = '2';
+      }
+      return {
+        l: f.teams.home.name,
+        v: f.teams.away.name,
+        r: resultado,
+        c: cerrado,
+        id: f.fixture.id,
+      };
+    });
+
+    // Add Pleno al 15 as 15th
+    partidos.push({l:'Pleno al 15', v:'', r:null, c:false, pleno:true});
+    return partidos;
+  } catch(e){
+    console.error('Error fetching partidos:', e);
+    return null;
+  }
+}
+
+async function cargarPartidosAPI(){
+  const partidos = await fetchPartidosJornada(JORNADA);
+  if(partidos){
+    // Update global PARTIDOS array
+    for(let i=0; i<partidos.length; i++){
+      if(PARTIDOS[i]) {
+        PARTIDOS[i].l = partidos[i].l;
+        PARTIDOS[i].v = partidos[i].v;
+        PARTIDOS[i].r = partidos[i].r;
+        PARTIDOS[i].c = partidos[i].c;
+      }
+    }
+    // Save to localStorage as cache
+    try { localStorage.setItem('partidos_j'+JORNADA, JSON.stringify(partidos)); } catch(e){}
+    return true;
+  }
+  // Try cache
+  try {
+    const cached = localStorage.getItem('partidos_j'+JORNADA);
+    if(cached){
+      const p = JSON.parse(cached);
+      for(let i=0; i<p.length; i++){
+        if(PARTIDOS[i]){
+          PARTIDOS[i].l = p[i].l;
+          PARTIDOS[i].v = p[i].v;
+          PARTIDOS[i].r = p[i].r;
+          PARTIDOS[i].c = p[i].c;
+        }
+      }
+      return true;
+    }
+  } catch(e){}
+  return false;
+}
 
 // ============ SUPABASE FUNCTIONS ============
 async function loadApuestasFromDB(jornada){
@@ -476,9 +604,12 @@ async function saveEstado(jornada, clave, valor){
 
 async function login(pid){
   S.player=pid;save();
-  // Show loading
-  document.getElementById('login-list').innerHTML='<div style="text-align:center;padding:40px;color:var(--text-sec);"><i class="ti ti-loader" style="font-size:32px;animation:spin 1s linear infinite;"></i><p style="margin-top:12px;font-size:14px;">Cargando apuestas...</p></div>';
-  await loadApuestasFromDB(JORNADA);
+  document.getElementById('login-list').innerHTML='<div style="text-align:center;padding:40px;color:var(--text-sec);"><i class="ti ti-loader" style="font-size:32px;animation:spin 1s linear infinite;"></i><p style="margin-top:12px;font-size:14px;">Cargando...</p></div>';
+  // Load partidos and apuestas in parallel
+  await Promise.all([
+    cargarPartidosAPI(),
+    loadApuestasFromDB(JORNADA)
+  ]);
   navTo('jornada');
 }
 function logout(){S.player=null;save();renderLogin();goTo('s-login');}
@@ -600,7 +731,7 @@ function renderStep3(p){
   if(parejaPendiente&&!BLOQUEADO){
     const comp=JJ.find(j=>j.id!==p.id&&j.p===p.p);
     h+=`<div class="alert alert-warn"><i class="ti ti-alert-triangle"></i><p>Tu apuesta individual está guardada. La apuesta de pareja está pendiente — ${comp?comp.n:'tu pareja'} tiene que rellenarla cuando entre.</p></div>`;
-  } else if(!BLOQUEADO){
+  } else if(!BLOQUEADO&&JORNADA===JORNADA_ACTUAL){
     h+=`<p style="font-size:11px;color:var(--text-ter);text-align:center;margin-bottom:10px;">Toca tu fila para cambiar tu apuesta antes del jueves 22h</p>`;
   }
   h+=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
@@ -618,7 +749,7 @@ function topbarHtml(p, showSalir=false){
   <div class="topbar" style="display:flex;align-items:center;justify-content:space-between;">
     <div class="row" style="gap:10px;">${avHtml(p,36)}<div>
       <p style="font-size:15px;font-weight:700;color:var(--text);">${p.n}</p>
-      <p style="font-size:11px;color:var(--text-sec);">Jornada ${JORNADA} · LaLiga 2025-26</p>
+      <p style="font-size:11px;color:var(--text-sec);">Jornada ${JORNADA} · 🌍 Mundial 2026 · Demo</p>
     </div></div>
     ${showSalir?`<button onclick="logout()" class="badge b-gray" style="cursor:pointer;border:none;font-size:11px;font-weight:600;">Cambiar perfil</button>`:''}
   </div>`;
@@ -1114,7 +1245,7 @@ function renderRanking(){
   <div class="topbar" style="display:flex;align-items:flex-start;justify-content:space-between;">
     <div>
       <h2 style="font-size:22px;font-weight:700;color:var(--text);margin-bottom:2px;">Clasificación</h2>
-      <p style="font-size:13px;color:var(--text-sec);">Temporada 2025-26 · Jornada ${JORNADA}</p>
+      <p style="font-size:13px;color:var(--text-sec);">Mundial 2026 · Jornada demo</p>
     </div>
     <button onclick="document.getElementById('modal-puntos').style.display='flex'" style="width:34px;height:34px;border-radius:50%;background:var(--blue-bg);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;margin-top:4px;">
       <i class="ti ti-help" style="font-size:18px;color:var(--blue-text);" aria-hidden="true"></i>
