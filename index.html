@@ -289,11 +289,13 @@
 // ============ SUPABASE CLIENT ============
 const SUPA_URL = 'https://fpcthmmnnwzhvcgyngqr.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZwY3RobW1ubnd6aHZjZ3luZ3FyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0MTM5NzQsImV4cCI6MjA5Njk4OTk3NH0.Kasr04rGiIy62QjGKxjg3BtKkkIKWodO-le4y86S588';
-let supa;
-// Init after DOM loads to ensure CDN is ready
-window.addEventListener('load', () => {
-  supa = window.supabase.createClient(SUPA_URL, SUPA_KEY);
-});
+// getSupa() ensures client is always initialized
+function getSupa() {
+  if(!window._supa) {
+    window._supa = window.supabase.createClient(SUPA_URL, SUPA_KEY);
+  }
+  return window._supa;
+}
 
 // ============ AVATARS ============
 const AVATARS = {
@@ -418,6 +420,58 @@ function renderLogin(){
         </div>`;
       }).join('')}
     </div>`;
+}
+
+
+// ============ SUPABASE FUNCTIONS ============
+async function loadApuestasFromDB(jornada){
+  try {
+    const supa = getSupa();
+    const [r1, r2, r3] = await Promise.all([
+      supa.from('apuestas').select('*').eq('jornada', jornada),
+      supa.from('apuestas_pleno').select('*').eq('jornada', jornada),
+      supa.from('jornada_estado').select('*').eq('jornada', jornada),
+    ]);
+    if(!S.apuestas[jornada]) S.apuestas[jornada] = {};
+    if(r1.data) r1.data.forEach(row => {
+      S.apuestas[jornada][row.jugador_id] = row.apuesta;
+    });
+    if(r2.data) r2.data.forEach(row => {
+      S.apuestas[jornada]['pleno_'+row.pareja_id] = {l: row.goles_local, v: row.goles_visitante};
+    });
+    if(r3.data) r3.data.forEach(row => {
+      S.apuestas[jornada][row.clave] = row.valor;
+    });
+    save();
+  } catch(e){ console.error('Error loading from DB:', e); }
+}
+
+async function saveApuesta(jornada, jugadorId, apuesta){
+  try {
+    const supa = getSupa();
+    await supa.from('apuestas').upsert({
+      jornada, jugador_id: jugadorId, apuesta, updated_at: new Date().toISOString()
+    }, {onConflict: 'jornada,jugador_id'});
+  } catch(e){ console.error('Error saving apuesta:', e); }
+}
+
+async function savePlenoApuesta(jornada, parejaId, golesLocal, golesVisitante){
+  try {
+    const supa = getSupa();
+    await supa.from('apuestas_pleno').upsert({
+      jornada, pareja_id: parejaId, goles_local: golesLocal, goles_visitante: golesVisitante,
+      updated_at: new Date().toISOString()
+    }, {onConflict: 'jornada,pareja_id'});
+  } catch(e){ console.error('Error saving pleno:', e); }
+}
+
+async function saveEstado(jornada, clave, valor){
+  try {
+    const supa = getSupa();
+    await supa.from('jornada_estado').upsert({
+      jornada, clave, valor
+    }, {onConflict: 'jornada,clave'});
+  } catch(e){ console.error('Error saving estado:', e); }
 }
 
 async function login(pid){
