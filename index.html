@@ -605,11 +605,9 @@ async function saveEstado(jornada, clave, valor){
 async function login(pid){
   S.player=pid;save();
   document.getElementById('login-list').innerHTML='<div style="text-align:center;padding:40px;color:var(--text-sec);"><i class="ti ti-loader" style="font-size:32px;animation:spin 1s linear infinite;"></i><p style="margin-top:12px;font-size:14px;">Cargando...</p></div>';
-  // Load partidos and apuestas in parallel
-  await Promise.all([
-    cargarPartidosAPI(),
-    loadApuestasFromDB(JORNADA)
-  ]);
+  // Solo cargar apuestas - partidos hardcodeados para demo Mundial
+  // TODO: activar cargarPartidosAPI() cuando empiece LaLiga 2026-27
+  await loadApuestasFromDB(JORNADA);
   navTo('jornada');
 }
 function logout(){S.player=null;save();renderLogin();goTo('s-login');}
