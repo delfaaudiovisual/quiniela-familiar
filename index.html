@@ -447,10 +447,80 @@ async function cambiarJornada(j){
   // Load data for selected jornada
   document.getElementById('tab-jornada').innerHTML='<div style="text-align:center;padding:60px 20px;"><i class="ti ti-loader" style="font-size:32px;color:var(--text-sec);animation:spin 1s linear infinite;"></i><p style="margin-top:12px;font-size:14px;color:var(--text-sec);">Cargando jornada '+j+'...</p></div>';
   await Promise.all([
-    cargarPartidosAPI(),
+    cargarJornadaLoterías(),
     loadApuestasFromDB(j)
   ]);
   renderStep3(p);
+}
+
+
+// ============ NOTIFICACIONES PUSH ============
+const VAPID_PUBLIC_KEY_CLIENT = 'BOcgq11GFtEd1KLb3GUs1TsJHfqWt91nBOr0VHgSkBRn2UGqL4szNLI6sIy3HVb0VVSoqy_zess9HuMYXMuzONA';
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i);
+  return outputArray;
+}
+
+async function registrarNotificaciones(jugadorId) {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+  try {
+    // Register service worker
+    const reg = await navigator.serviceWorker.register('/sw.js');
+    // Request permission
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') return;
+    // Subscribe
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY_CLIENT)
+    });
+    // Save to Supabase
+    await getSupa().from('push_subscriptions').upsert({
+      jugador_id: jugadorId,
+      subscription: sub.toJSON()
+    }, {onConflict: 'jugador_id'});
+    console.log('Notificaciones activadas para', jugadorId);
+  } catch(e) {
+    console.error('Error registrando notificaciones:', e);
+  }
+}
+
+async function comprobarTodosApostaron() {
+  try {
+    const res = await fetch('https://fpcthmmnnwzhvcgyngqr.supabase.co/functions/v1/notificaciones', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer {}'.format('{}'.format('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZwY3RobW1ubnd6aHZjZ3luZ3FyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0MTM5NzQsImV4cCI6MjA5Njk4OTk3NH0.Kasr04rGiIy62QjGKxjg3BtKkkIKWodO-le4y86S588'))
+      },
+      body: JSON.stringify({ tipo: 'comprobar_todos_apostaron', jornada: JORNADA })
+    });
+    const data = await res.json();
+    return data.todos;
+  } catch(e) {
+    console.error('Error comprobando apuestas:', e);
+    return false;
+  }
+}
+
+async function avisarPareja(jugadorId, mensaje) {
+  try {
+    await fetch('https://fpcthmmnnwzhvcgyngqr.supabase.co/functions/v1/notificaciones', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZwY3RobW1ubnd6aHZjZ3luZ3FyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0MTM5NzQsImV4cCI6MjA5Njk4OTk3NH0.Kasr04rGiIy62QjGKxjg3BtKkkIKWodO-le4y86S588'
+      },
+      body: JSON.stringify({ tipo: 'aviso_pareja', jugador_id: jugadorId, datos: { mensaje } })
+    });
+  } catch(e) {
+    console.error('Error avisando pareja:', e);
+  }
 }
 
 function renderLogin(){
@@ -470,84 +540,57 @@ function renderLogin(){
 
 
 
-// ============ API-FOOTBALL ============
-const API_FB_KEY = 'c5334bfe32c373bf75f91ae4bfc0fcb3';
-const API_FB_URL = 'https://v3.football.api-sports.io';
-const LALIGA_ID = 140; // LaLiga ID
-const SEASON = 2025;
 
-async function fetchPartidosJornada(jornada){
+// ============ API LOTERÍAS ============
+const SUPA_FUNCTIONS_URL = 'https://fpcthmmnnwzhvcgyngqr.supabase.co/functions/v1';
+const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZwY3RobW1ubnd6aHZjZ3luZ3FyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0MTM5NzQsImV4cCI6MjA5Njk4OTk3NH0.Kasr04rGiIy62QjGKxjg3BtKkkIKWodO-le4y86S588';
+
+async function cargarJornadaLoterías(drawId=null){
   try {
-    const res = await fetch(`${API_FB_URL}/fixtures?league=${LALIGA_ID}&season=${SEASON}&round=Regular Season - ${jornada}`, {
+    const body = drawId ? { drawId } : {};
+    const res = await fetch(`${SUPA_FUNCTIONS_URL}/quiniela-jornada`, {
+      method: 'POST',
       headers: {
-        'x-apisports-key': API_FB_KEY
-      }
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${ANON_KEY}`
+      },
+      body: JSON.stringify(body)
     });
+    if(!res.ok) throw new Error('Error API '+res.status);
     const data = await res.json();
-    if(!data.response || data.response.length === 0) return null;
+    if(data.error) throw new Error(data.error);
 
-    // Map to our PARTIDOS format
-    const partidos = data.response.slice(0, 14).map(f => {
-      const status = f.fixture.status.short;
-      const cerrado = ['FT','AET','PEN'].includes(status);
-      let resultado = null;
-      if(cerrado){
-        const gl = f.goals.home;
-        const gv = f.goals.away;
-        if(gl > gv) resultado = '1';
-        else if(gl === gv) resultado = 'X';
-        else resultado = '2';
+    if(data.partidos && data.partidos.length > 0){
+      // Update global PARTIDOS array
+      for(let i=0; i<Math.min(data.partidos.length, PARTIDOS.length); i++){
+        PARTIDOS[i].l = data.partidos[i].l || PARTIDOS[i].l;
+        PARTIDOS[i].v = data.partidos[i].v || PARTIDOS[i].v;
+        PARTIDOS[i].r = data.partidos[i].r || null;
+        PARTIDOS[i].c = data.partidos[i].c || false;
+        if(data.partidos[i].pleno) PARTIDOS[i].pleno = true;
       }
-      return {
-        l: f.teams.home.name,
-        v: f.teams.away.name,
-        r: resultado,
-        c: cerrado,
-        id: f.fixture.id,
-      };
-    });
-
-    // Add Pleno al 15 as 15th
-    partidos.push({l:'Pleno al 15', v:'', r:null, c:false, pleno:true});
-    return partidos;
-  } catch(e){
-    console.error('Error fetching partidos:', e);
-    return null;
-  }
-}
-
-async function cargarPartidosAPI(){
-  const partidos = await fetchPartidosJornada(JORNADA);
-  if(partidos){
-    // Update global PARTIDOS array
-    for(let i=0; i<partidos.length; i++){
-      if(PARTIDOS[i]) {
-        PARTIDOS[i].l = partidos[i].l;
-        PARTIDOS[i].v = partidos[i].v;
-        PARTIDOS[i].r = partidos[i].r;
-        PARTIDOS[i].c = partidos[i].c;
-      }
-    }
-    // Save to localStorage as cache
-    try { localStorage.setItem('partidos_j'+JORNADA, JSON.stringify(partidos)); } catch(e){}
-    return true;
-  }
-  // Try cache
-  try {
-    const cached = localStorage.getItem('partidos_j'+JORNADA);
-    if(cached){
-      const p = JSON.parse(cached);
-      for(let i=0; i<p.length; i++){
-        if(PARTIDOS[i]){
-          PARTIDOS[i].l = p[i].l;
-          PARTIDOS[i].v = p[i].v;
-          PARTIDOS[i].r = p[i].r;
-          PARTIDOS[i].c = p[i].c;
-        }
-      }
+      // Cache with drawId as key
+      const cacheKey = 'partidos_'+(data.jornadaNum||JORNADA);
+      try { localStorage.setItem(cacheKey, JSON.stringify(data.partidos)); } catch(e){}
       return true;
     }
-  } catch(e){}
+  } catch(e) {
+    console.warn('API Loterías no disponible, usando caché:', e);
+    // Try localStorage cache
+    try {
+      const cached = localStorage.getItem('partidos_'+JORNADA);
+      if(cached){
+        const p = JSON.parse(cached);
+        for(let i=0; i<Math.min(p.length, PARTIDOS.length); i++){
+          PARTIDOS[i].l = p[i].l || PARTIDOS[i].l;
+          PARTIDOS[i].v = p[i].v || PARTIDOS[i].v;
+          PARTIDOS[i].r = p[i].r || null;
+          PARTIDOS[i].c = p[i].c || false;
+        }
+        return true;
+      }
+    } catch(e2){}
+  }
   return false;
 }
 
@@ -605,9 +648,9 @@ async function saveEstado(jornada, clave, valor){
 async function login(pid){
   S.player=pid;save();
   document.getElementById('login-list').innerHTML='<div style="text-align:center;padding:40px;color:var(--text-sec);"><i class="ti ti-loader" style="font-size:32px;animation:spin 1s linear infinite;"></i><p style="margin-top:12px;font-size:14px;">Cargando...</p></div>';
-  // Solo cargar apuestas - partidos hardcodeados para demo Mundial
-  // TODO: activar cargarPartidosAPI() cuando empiece LaLiga 2026-27
   await loadApuestasFromDB(JORNADA);
+  // Registrar notificaciones en segundo plano
+  registrarNotificaciones(pid);
   navTo('jornada');
 }
 function logout(){S.player=null;save();renderLogin();goTo('s-login');}
