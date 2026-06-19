@@ -349,8 +349,8 @@ const PARTIDOS=[
   {l:'Portugal',        v:'DR Congo',       r:null, c:false},
   {l:'Inglaterra',      v:'Croacia',        r:null, c:false, pleno:true},
 ];
-let JORNADA=1; // current active jornada
-let JORNADA_ACTUAL=1; // jornada real actual
+let JORNADA=68; // current active jornada
+let JORNADA_ACTUAL=68; // jornada real actual
 // Bloqueo automático: jueves 22h - domingo 23:59h
 function calcularBloqueado(){
   const now = new Date();
@@ -673,6 +673,7 @@ async function cargarJornadaLoterías(modo='auto'){
       // Update JORNADA number if returned
       if(data.jornadaNum && !isNaN(parseInt(data.jornadaNum))) {
         JORNADA_ACTUAL = parseInt(data.jornadaNum);
+        JORNADA = JORNADA_ACTUAL;
       }
 
       // Cache
