@@ -545,9 +545,88 @@ function renderLogin(){
 const SUPA_FUNCTIONS_URL = 'https://fpcthmmnnwzhvcgyngqr.supabase.co/functions/v1';
 const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZwY3RobW1ubnd6aHZjZ3luZ3FyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0MTM5NzQsImV4cCI6MjA5Njk4OTk3NH0.Kasr04rGiIy62QjGKxjg3BtKkkIKWodO-le4y86S588';
 
-async function cargarJornadaLoterías(drawId=null){
+let _resultadosUrl = null; // URL de resultados de la jornada actual
+let _pollingInterval = null; // Intervalo de actualización en directo
+
+
+// ============ SMART POLLING ============
+function getProximoPartido() {
+  const now = new Date();
+  const pendientes = PARTIDOS
+    .filter(p => !p.c && !p.pleno && p.fecha && p.hora)
+    .map(p => {
+      const [d, m, y] = p.fecha.split('/');
+      const [h, min] = p.hora.split(':');
+      const dt = new Date(parseInt(y), parseInt(m)-1, parseInt(d), parseInt(h), parseInt(min));
+      return { ...p, dt };
+    })
+    .sort((a, b) => a.dt - b.dt);
+  return pendientes[0] || null;
+}
+
+function getUltimoPartidoJugado() {
+  const now = new Date();
+  const recientes = PARTIDOS
+    .filter(p => !p.pleno && p.fecha && p.hora)
+    .map(p => {
+      const [d, m, y] = p.fecha.split('/');
+      const [h, min] = p.hora.split(':');
+      const dt = new Date(parseInt(y), parseInt(m)-1, parseInt(d), parseInt(h), parseInt(min));
+      return { ...p, dt };
+    })
+    .filter(p => p.dt <= now)
+    .sort((a, b) => b.dt - a.dt);
+  return recientes[0] || null;
+}
+
+function programarPolling() {
+  // Clear existing
+  if(_pollingInterval) { clearInterval(_pollingInterval); _pollingInterval = null; }
+
+  const now = new Date();
+  const day = now.getDay();
+  const esFinDeSemana = day === 5 || day === 6 || day === 0 || day === 1;
+  if(!esFinDeSemana) return;
+
+  // All done?
+  const todosCerrados = PARTIDOS.filter(p=>!p.pleno).every(p=>p.c);
+  if(todosCerrados) { console.log('Todos los partidos cerrados, polling desactivado'); return; }
+
+  const proximo = getProximoPartido();
+  const ultimo = getUltimoPartidoJugado();
+  const minHastaProximo = proximo ? (proximo.dt - now) / 60000 : Infinity;
+  const minDesdeUltimo = ultimo ? (now - ultimo.dt) / 60000 : Infinity;
+
+  // Is there a match in play? (started <110 min ago and not closed)
+  const hayPartidoEnJuego = ultimo && !ultimo.c && minDesdeUltimo < 110;
+
+  if(hayPartidoEnJuego || minHastaProximo < 30) {
+    // Active: poll every 5 minutes
+    console.log(`Polling activo cada 5min — partido en juego o arranca en ${Math.round(minHastaProximo)}min`);
+    _pollingInterval = setInterval(() => actualizarResultados(), 5 * 60 * 1000);
+  } else if(minHastaProximo < Infinity) {
+    // Inactive: wait until 30min before next match
+    const msEspera = Math.max(0, (minHastaProximo - 30) * 60000);
+    console.log(`Próximo partido en ${Math.round(minHastaProximo)}min, polling arranca en ${Math.round(msEspera/60000)}min`);
+    setTimeout(() => programarPolling(), msEspera);
+  }
+}
+
+async function actualizarResultados() {
+  const updated = await cargarJornadaLoterías('resultados');
+  if(updated) {
+    const p = jugador(S.player);
+    if(p && S.step === 3) renderJornada();
+    // Reschedule based on new state
+    programarPolling();
+  }
+}
+
+async function cargarJornadaLoterías(modo='auto'){
   try {
-    const body = drawId ? { drawId } : {};
+    const body = { modo };
+    if(_resultadosUrl) body.resultadosUrl = _resultadosUrl;
+
     const res = await fetch(`${SUPA_FUNCTIONS_URL}/quiniela-jornada`, {
       method: 'POST',
       headers: {
@@ -561,22 +640,36 @@ async function cargarJornadaLoterías(drawId=null){
     if(data.error) throw new Error(data.error);
 
     if(data.partidos && data.partidos.length > 0){
+      // Save resultados URL for future polls
+      if(data.resultadosUrl) _resultadosUrl = data.resultadosUrl;
+
       // Update global PARTIDOS array
       for(let i=0; i<Math.min(data.partidos.length, PARTIDOS.length); i++){
         PARTIDOS[i].l = data.partidos[i].l || PARTIDOS[i].l;
         PARTIDOS[i].v = data.partidos[i].v || PARTIDOS[i].v;
         PARTIDOS[i].r = data.partidos[i].r || null;
         PARTIDOS[i].c = data.partidos[i].c || false;
+        PARTIDOS[i].marcador = data.partidos[i].marcador || null;
         if(data.partidos[i].pleno) PARTIDOS[i].pleno = true;
+        if(data.partidos[i].plenoResultado) PARTIDOS[i].plenoResultado = data.partidos[i].plenoResultado;
       }
-      // Cache with drawId as key
-      const cacheKey = 'partidos_'+(data.jornadaNum||JORNADA);
-      try { localStorage.setItem(cacheKey, JSON.stringify(data.partidos)); } catch(e){}
+
+      // Update JORNADA number if returned
+      if(data.jornadaNum && !isNaN(parseInt(data.jornadaNum))) {
+        JORNADA = parseInt(data.jornadaNum);
+        JORNADA_ACTUAL = JORNADA;
+      }
+
+      // Cache
+      try { localStorage.setItem('partidos_'+JORNADA, JSON.stringify(data.partidos)); } catch(e){}
+
+      // Smart polling — only when matches are being played
+      programarPolling();
+
       return true;
     }
   } catch(e) {
-    console.warn('API Loterías no disponible, usando caché:', e);
-    // Try localStorage cache
+    console.warn('API no disponible, usando caché:', e);
     try {
       const cached = localStorage.getItem('partidos_'+JORNADA);
       if(cached){
