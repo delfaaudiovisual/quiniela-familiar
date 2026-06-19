@@ -1075,7 +1075,7 @@ function renderGlobalTable(p,ap){
     if(pt.pleno){
       const pap=ap['pleno_'+ent.id]||{};
       aBadge=pap.l&&pap.v
-        ?`<span style="font-size:12px;font-weight:700;background:#e8e8ed;color:#1a1a1a;border:1.5px solid #c7c7cc;border-radius:6px;padding:2px 8px;">⭐${pap.l}-${pap.v}</span>`
+        ?`<span style="display:inline-flex;align-items:center;justify-content:center;height:30px;min-width:60px;font-size:13px;font-weight:800;border-radius:6px;background:#e8e8ed;color:#1a1a1a;border:1.5px solid #c7c7cc;">⭐ ${pap.l}-${pap.v}</span>`
         :`<span style="font-size:13px;color:var(--text-ter);">—</span>`;
     } else {
       if(a){
@@ -1086,12 +1086,12 @@ function renderGlobalTable(p,ap){
             <i class="ti ti-${ok?'check':'x'}" style="font-size:12px;color:${ok?'var(--green-text)':'var(--red-text)'};" aria-hidden="true"></i>
           </span>`;
         }
-        aBadge=`<div style="display:flex;align-items:center;gap:4px;">
-          <span style="display:inline-flex;align-items:center;justify-content:center;height:30px;min-width:40px;font-size:14px;font-weight:800;border-radius:6px;background:#e8e8ed;color:#1a1a1a;border:1.5px solid #c7c7cc;${editing?'opacity:0.4;':''}">${a}</span>
+        aBadge=`<div style="display:flex;align-items:center;gap:4px;flex-shrink:0;">
+          <span style="display:inline-flex;align-items:center;justify-content:center;height:30px;min-width:40px;font-size:14px;font-weight:800;border-radius:6px;background:#e8e8ed;color:#1a1a1a;border:1.5px solid #c7c7cc;">${a}</span>
           ${res}
         </div>`;
       } else {
-        aBadge=`<span style="font-size:13px;color:var(--text-ter);">—</span>`;
+        aBadge=`<div style="display:flex;align-items:center;justify-content:center;height:30px;min-width:40px;flex-shrink:0;"><span style="font-size:16px;color:var(--text-ter);">—</span></div>`;
       }
     }
 
