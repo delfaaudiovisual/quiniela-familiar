@@ -1127,3 +1127,111 @@ function renderGlobalTable(p,ap){
       </div>
       ${aBadge}
     </div>`
+  });
+  h+=`</div>`;
+  return h;
+}
+
+function partidoCardHtml(pos,key,isPareja,showBloq=false){
+  const pt=PARTIDOS[pos-1];
+  const ap=(S.apuestas[JORNADA]||{})[key];
+  const tipo=isPareja?'par':'ind';
+  const p=jugador(S.player);
+  const comp=isPareja?JJ.find(j=>j.id!==p.id&&j.p===p.p):null;
+  const apAll=S.apuestas[JORNADA]||{};
+  const compYaApostoPar=isPareja&&comp&&apAll[comp.id]&&ap;
+  const bloqCard=BLOQUEADO||(isPareja&&compYaApostoPar&&ap);
+
+  let resHtml='';
+  if(pt.c&&pt.r){
+    const ok=ap===pt.r;
+    resHtml=`<span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:${ok?'var(--green-bg)':'var(--red-bg)'};">
+      <i class="ti ti-${ok?'check':'x'}" style="font-size:12px;color:${ok?'var(--green-text)':'var(--red-text)'};" aria-hidden="true"></i>
+    </span>`;
+  }
+
+  const opts=['1','X','2'].map(o=>{
+    const sel=ap===o;
+    const cls=sel?(o==='1'?'ap-1':o==='X'?'ap-x':'ap-2'):'';
+    const dis=bloqCard?'disabled':'';
+    return`<button class="ap-btn ${cls}" ${dis} style="${bloqCard&&!sel?'opacity:0.3;':''}" onclick="setAp('${key}',${JORNADA},'${o}')">${o}</button>`;
+  }).join('');
+
+  const marcadorBadge=pt.marcador&&!pt.c?`<span style="font-size:11px;color:var(--orange-text);font-weight:700;margin-left:6px;">${pt.marcador}</span>`:'';
+
+  return`<div class="partido-card partido-card-${tipo}" style="${bloqCard?'opacity:0.8;':''}">
+    <div class="partido-header partido-header-${tipo}" style="display:flex;align-items:center;justify-content:space-between;">
+      <span>Partido ${pos}${pt.marcador&&!pt.c?' · <span style="color:var(--orange-text);">En juego</span>':''}</span>
+      ${bloqCard?`<span style="font-size:10px;color:var(--text-sec);"><i class="ti ti-lock" aria-hidden="true"></i> Bloqueada</span>`:''}
+    </div>
+    <div class="partido-body">
+      <p class="partido-nombre">${pt.l} — ${pt.v}${marcadorBadge}</p>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:10px;">
+        ${opts}
+        ${ap?`<span style="font-size:11px;color:var(--text-sec);margin-left:4px;">Apostado</span>`:''}
+        ${resHtml}
+      </div>
+    </div>
+  </div>`;
+}
+
+function plenoCardHtml(pos,key,isPareja){
+  const pt=PARTIDOS[pos-1];
+  const tipo=isPareja?'par':'ind';
+  const p=jugador(S.player);
+  const comp=isPareja?JJ.find(j=>j.id!==p.id&&j.p===p.p):null;
+  const apAll=S.apuestas[JORNADA]||{};
+  const plenoKey='pleno_'+key;
+  const ap=apAll[plenoKey]||{l:null,v:null};
+  const compApostoPar=isPareja&&comp&&apAll[comp.id]&&ap.l&&ap.v;
+  const bloqCard=BLOQUEADO||compApostoPar;
+
+  const goles=['0','1','2','M'];
+  const btsLocal=goles.map(g=>{
+    const sel=ap.l===g?' ap-gol-sel':'';
+    const dis=bloqCard?'disabled':'';
+    return`<button class="ap-gol${sel}" ${dis} style="${bloqCard&&ap.l!==g?'opacity:0.3;':''}" onclick="setPlenoGol('${plenoKey}','l','${g}')">${g}</button>`;
+  }).join('');
+  const btsVisit=goles.map(g=>{
+    const sel=ap.v===g?' ap-gol-sel':'';
+    const dis=bloqCard?'disabled':'';
+    return`<button class="ap-gol${sel}" ${dis} style="${bloqCard&&ap.v!==g?'opacity:0.3;':''}" onclick="setPlenoGol('${plenoKey}','v','${g}')">${g}</button>`;
+  }).join('');
+
+  const completo=ap.l&&ap.v;
+  const resumen=completo?`<div style="margin-top:8px;display:flex;align-items:center;gap:6px;">
+    <span class="badge b-teal">⭐ Apuesta: ${ap.l} - ${ap.v}</span>
+    ${compApostoPar?`<span style="font-size:11px;color:var(--text-sec);"><i class="ti ti-lock" aria-hidden="true"></i> Puesta por ${comp.n}</span>`:''}
+  </div>`:'';
+
+  return`<div class="partido-card partido-card-${tipo}">
+    <div class="partido-header partido-header-${tipo}" style="display:flex;align-items:center;justify-content:space-between;">
+      <span>Partido ${pos} · ⭐ Pleno al 15</span>
+      ${compApostoPar?`<span style="font-size:10px;"><i class="ti ti-lock" aria-hidden="true"></i> Bloqueada</span>`:''}
+    </div>
+    <div class="partido-body">
+      ${!bloqCard?`<div class="alert alert-purple" style="margin-bottom:12px;padding:10px 12px;">
+        <i class="ti ti-star" style="font-size:16px;"></i>
+        <p style="font-size:12px;"><strong>¡Atención! Este es el Pleno al 15.</strong> No se elige 1X2. Elige los goles: <strong>0</strong>, <strong>1</strong>, <strong>2</strong> o <strong>M</strong> (3+). Ej: 3-1 → M y 1.</p>
+      </div>`:''}
+      <p class="partido-nombre">${pt.l} — ${pt.v}</p>
+      <div class="pleno-grid">
+        <div class="pleno-row">
+          <p class="pleno-team-label">⚽ ${pt.l}</p>
+          <div class="pleno-btns">${btsLocal}</div>
+        </div>
+        <div class="pleno-row">
+          <p class="pleno-team-label">⚽ ${pt.v.length>0?pt.v:'Visitante'}</p>
+          <div class="pleno-btns">${btsVisit}</div>
+        </div>
+      </div>
+      ${resumen}
+    </div>
+  </div>`;
+}
+
+// ============ INIT ============
+renderLogin();
+</script>
+</body>
+</html>
