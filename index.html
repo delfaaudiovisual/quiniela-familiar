@@ -1058,6 +1058,8 @@ function confirmarMiApuesta(){
 
 function renderGlobalTable(p,ap){
   const all=[...JJ.map(j=>({id:j.id,n:j.n,c:j.c,ct:j.ct,isP:false})),...Object.values(PP).map(par=>({id:par.id,n:par.n,c:'#F1EFE8',ct:'#444441',isP:true}))];
+  // Ordenar por número de partido (posición en la jornada)
+  all.sort((a,b)=>getPos(a.id,JORNADA)-getPos(b.id,JORNADA));
   let h=`<div class="card-flush" style="padding:0 14px;">`;
   all.forEach(ent=>{
     const pos=getPos(ent.id,JORNADA);
