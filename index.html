@@ -537,8 +537,9 @@ async function avisarPareja(jugadorId, mensaje) {
 }
 
 async function renderLogin(){
-  // Load apuestas from DB to show who has already bet (green ticks)
-  await loadApuestasFromDB(JORNADA_ACTUAL);
+  // Load partidos first to get correct JORNADA_ACTUAL, then apuestas
+  try { await cargarJornadaLoterías(); } catch(e){}
+  try { await loadApuestasFromDB(JORNADA_ACTUAL); } catch(e){}
   const ap=S.apuestas[JORNADA_ACTUAL]||{};
   document.getElementById('login-list').innerHTML=`
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
