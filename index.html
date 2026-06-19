@@ -350,7 +350,7 @@ const PARTIDOS=[
   {l:'Inglaterra',      v:'Croacia',        r:null, c:false, pleno:true},
 ];
 let JORNADA=1; // current active jornada
-const JORNADA_ACTUAL=1; // jornada real actual
+let JORNADA_ACTUAL=1; // jornada real actual
 // Bloqueo automático: jueves 22h - domingo 23:59h
 function calcularBloqueado(){
   const now = new Date();
@@ -672,8 +672,7 @@ async function cargarJornadaLoterías(modo='auto'){
 
       // Update JORNADA number if returned
       if(data.jornadaNum && !isNaN(parseInt(data.jornadaNum))) {
-        JORNADA = parseInt(data.jornadaNum);
-        JORNADA_ACTUAL = JORNADA;
+        JORNADA_ACTUAL = parseInt(data.jornadaNum);
       }
 
       // Cache
@@ -1230,14 +1229,21 @@ function plenoCardHtml(pos,key,isPareja){
   </div>`;
 }
 
-// ============ INIT ============
-renderLogin();
-</script>
-</body>
-</html>    </div>`
-  });
-  h+=`</div>`;
-  return h;
+
+// ============ SETAP / SETPLENOGOL ============
+function setAp(key, jornada, valor){
+  if(BLOQUEADO) return;
+  if(!S.apuestas[jornada]) S.apuestas[jornada]={};
+  S.apuestas[jornada][key]=valor;
+  save(); renderJornada();
+}
+
+function setPlenoGol(plenoKey, lado, valor){
+  if(BLOQUEADO) return;
+  if(!S.apuestas[JORNADA]) S.apuestas[JORNADA]={};
+  if(!S.apuestas[JORNADA][plenoKey]) S.apuestas[JORNADA][plenoKey]={l:null,v:null};
+  S.apuestas[JORNADA][plenoKey][lado]=valor;
+  save(); renderJornada();
 }
 
 // ============ CALCPUNTOS ============
@@ -1292,10 +1298,7 @@ function renderRanking(){
   sorted.forEach((jj,i)=>{
     const isMe=jj.id===p.id;
     const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':`${i+1}.`;
-    const av=AVATARS[jj.id]
-      ?`<div style="width:44px;height:44px;border-radius:50%;background:url(${AVATARS[jj.id]}) center/cover;flex-shrink:0;border:2px solid ${isMe?'var(--blue)':'var(--border)'};">
-</div>`
-      :`<div class="av" style="width:44px;height:44px;font-size:12px;background:${jj.c};color:${jj.ct};">${ini(jj.n)}</div>`;
+    const av=avHtml(jj,44);
 
     h+=`<div class="card" style="display:flex;align-items:center;gap:12px;margin-bottom:8px;${isMe?'border:1.5px solid var(--blue);background:var(--blue-bg);':''}">
       <span style="font-size:20px;width:28px;text-align:center;">${medal}</span>
@@ -1356,7 +1359,7 @@ function renderYo(){
 
   let h=`<div class="safe-top"></div>
   <div class="topbar" style="text-align:center;padding-bottom:12px;">
-    ${AVATARS[p.id]?`<div style="width:72px;height:72px;border-radius:50%;background:url(${AVATARS[p.id]}) center/cover;border:3px solid var(--border);margin:0 auto 8px;"></div>`:avHtml(p,72)}
+    ${avHtml(p,72)}
     <p style="font-size:20px;font-weight:700;color:var(--text);margin-top:8px;">${p.n}</p>
     <p style="font-size:13px;color:var(--text-sec);">${PP[p.p].n}</p>
   </div>
