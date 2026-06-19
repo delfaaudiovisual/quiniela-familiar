@@ -357,13 +357,13 @@ function calcularBloqueado(){
   const day = now.getDay(); // 0=dom, 1=lun, 2=mar, 3=mie, 4=jue, 5=vie, 6=sab
   const hour = now.getHours();
   // Bloqueado desde jueves 22h hasta lunes 00h
-  if(day === 4 && hour >= 22) return true; // jueves desde 22h
+  if(day === 4 && hour >= 23) return true; // jueves desde 23h (extendido esta semana)
   if(day === 5) return true; // viernes
   if(day === 6) return true; // sábado
   if(day === 0) return true; // domingo
   return false;
 }
-const BLOQUEADO = calcularBloqueado();
+let BLOQUEADO = calcularBloqueado();
 
 // Texto del countdown para mostrar cuánto queda
 function textoBloqueo(){
