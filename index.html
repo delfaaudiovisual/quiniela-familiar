@@ -764,6 +764,12 @@ async function login(pid){
   registrarNotificaciones(pid);
   navTo('jornada');
 }
+function resetCache(){
+  if(!confirm('¿Limpiar caché local? Solo borra datos en este dispositivo, no afecta a las apuestas guardadas.')) return;
+  localStorage.clear();
+  location.reload();
+}
+
 function logout(){S.player=null;save();renderLogin();goTo('s-login');}
 
 // ============ JORNADA ============
@@ -1443,6 +1449,9 @@ function renderYo(){
 
   h+=`<button class="btn btn-secondary" onclick="logout()" style="margin-top:8px;">
     <i class="ti ti-logout"></i>Cambiar de perfil
+  </button>
+  <button class="btn btn-secondary" onclick="resetCache()" style="margin-top:8px;background:none;border:1px solid var(--border);color:var(--text-ter);font-size:12px;">
+    <i class="ti ti-refresh"></i> Limpiar caché local
   </button></div>`;
 
   document.getElementById('tab-yo').innerHTML=h;
@@ -1468,6 +1477,18 @@ function compartirRanking(){
 }
 
 // ============ INIT ============
+// Cache version — bump this to force clear localStorage on all devices
+const APP_VERSION = '2026-08-01'; // cambiar a '2026-08-01' cuando empiece LaLiga
+const storedVersion = localStorage.getItem('app_version');
+if (storedVersion !== APP_VERSION) {
+  // New version — clear stale cache but keep player preference
+  const player = localStorage.getItem('player');
+  localStorage.clear();
+  if (player) localStorage.setItem('player', player);
+  localStorage.setItem('app_version', APP_VERSION);
+  console.log('Cache limpiada — nueva versión', APP_VERSION);
+}
+
 renderLogin();
 </script>
 </body>
