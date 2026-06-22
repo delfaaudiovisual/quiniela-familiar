@@ -88,7 +88,7 @@
   .sec-label{font-size:11px;font-weight:600;color:var(--text-sec);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;}
   input[type="text"]{width:100%;padding:11px 14px;border:0.5px solid var(--border);border-radius:var(--radius-sm);font-size:15px;background:var(--card);color:var(--text);outline:none;}
   input[type="text"]:focus{border-color:var(--blue);}
-  .global-row{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:0.5px solid var(--border-light);transition:background 0.1s;}
+  .global-row{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:0.5px solid var(--border-light);transition:background 0.1s;} .global-row > *:last-child{margin-left:auto;flex-shrink:0;}
   .global-row:last-child{border-bottom:none;}
   .global-row.me{background:var(--blue-bg);border-radius:var(--radius-sm);padding:8px 6px;margin:2px -6px;border-bottom:none;}
   .global-row.me+.global-row{border-top:0.5px solid var(--border-light);}
@@ -539,7 +539,7 @@ async function avisarPareja(jugadorId, mensaje) {
 async function renderLogin(){
   // Load partidos first to get correct JORNADA_ACTUAL, then apuestas
   try { await cargarJornadaLoterías(); } catch(e){}
-  try { await loadApuestasFromDB(JORNADA_ACTUAL); } catch(e){}
+  try { await Promise.all([loadApuestasFromDB(JORNADA_ACTUAL), cargarPerfiles()]); } catch(e){}
   const ap=S.apuestas[JORNADA_ACTUAL]||{};
   document.getElementById('login-list').innerHTML=`
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
@@ -1082,8 +1082,8 @@ function renderGlobalTable(p,ap){
     if(pt.pleno){
       const pap=ap['pleno_'+ent.id]||{};
       aBadge=pap.l&&pap.v
-        ?`<span style="display:inline-flex;align-items:center;justify-content:center;height:30px;min-width:60px;font-size:13px;font-weight:800;border-radius:6px;background:#e8e8ed;color:#1a1a1a;border:1.5px solid #c7c7cc;flex-shrink:0;margin-left:auto;">⭐${pap.l}-${pap.v}</span>`
-        :`<span style="display:inline-flex;align-items:center;justify-content:center;height:30px;width:44px;font-size:16px;color:var(--text-ter);flex-shrink:0;margin-left:auto;">—</span>`;
+        ?`<span style="display:inline-flex;align-items:center;justify-content:center;height:30px;min-width:60px;font-size:13px;font-weight:800;border-radius:6px;background:#e8e8ed;color:#1a1a1a;border:1.5px solid #c7c7cc;flex-shrink:0;">⭐${pap.l}-${pap.v}</span>`
+        :`<span style="display:inline-flex;align-items:center;justify-content:center;height:30px;width:44px;font-size:16px;color:var(--text-ter);flex-shrink:0;">—</span>`;
     } else {
       if(a){
         let bg='#e8e8ed', color='#1a1a1a', border='#c7c7cc';
@@ -1093,7 +1093,7 @@ function renderGlobalTable(p,ap){
           color=ok?'var(--green-text)':'var(--red-text)';
           border=ok?'var(--green-text)':'var(--red-text)';
         }
-        aBadge=`<span style="display:inline-flex;align-items:center;justify-content:center;height:30px;width:44px;font-size:14px;font-weight:800;border-radius:6px;background:${bg};color:${color};border:1.5px solid ${border};flex-shrink:0;margin-left:auto;">${a}</span>`;
+        aBadge=`<span style="display:inline-flex;align-items:center;justify-content:center;height:30px;width:44px;font-size:14px;font-weight:800;border-radius:6px;background:${bg};color:${color};border:1.5px solid ${border};flex-shrink:0;">${a}</span>`;
       } else {
         aBadge=`<div style="display:flex;align-items:center;justify-content:center;height:30px;min-width:40px;flex-shrink:0;"><span style="font-size:16px;color:var(--text-ter);">—</span></div>`;
       }
@@ -1327,6 +1327,44 @@ function renderRanking(){
   document.getElementById('tab-ranking').innerHTML=h;
 }
 
+// ============ HISTORICO ============
+async function cargarHistoricoYRenderizar(playerId){
+  if(!S.partidosHistorico) S.partidosHistorico = {};
+  const p = jugador(playerId);
+  if(!p) return;
+
+  // Get all jornadas with apuestas that we haven't loaded yet
+  const jornadasSinCargar = Object.keys(S.apuestas)
+    .map(Number)
+    .filter(j => j !== JORNADA_ACTUAL && !S.partidosHistorico[j] && (S.apuestas[j][p.id] || S.apuestas[j][p.p]));
+
+  if(jornadasSinCargar.length === 0){ renderYo(); return; }
+
+  // Show loading
+  const tab = document.getElementById('tab-yo');
+  if(tab) {
+    const btn = tab.querySelector('button[onclick*="cargarHistoricoYRenderizar"]');
+    if(btn) btn.innerHTML = '<i class="ti ti-loader" style="animation:spin 1s linear infinite;"></i> Cargando...';
+  }
+
+  // Load each jornada from Eduardo Losilla
+  for(const j of jornadasSinCargar){
+    try {
+      const res = await fetch(`${SUPA_FUNCTIONS_URL}/quiniela-jornada`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${ANON_KEY}` },
+        body: JSON.stringify({ jornadaHistorica: j })
+      });
+      if(res.ok){
+        const data = await res.json();
+        if(data.partidos) S.partidosHistorico[j] = data.partidos;
+      }
+    } catch(e){ console.warn('Error cargando jornada', j, e); }
+  }
+
+  renderYo();
+}
+
 // ============ RENDERYO ============
 function renderYo(){
   const p=jugador(S.player);if(!p)return;
@@ -1401,17 +1439,27 @@ function renderYo(){
 
   h+=`<p class="sec-label" style="margin-top:8px;">Historial</p>`;
 
-  let hayHistorial=false;
-  for(let j=JORNADA_ACTUAL;j>=1;j--){
+  // Get jornadas with apuestas from Supabase state
+  const jornadasConApuestas = Object.keys(S.apuestas)
+    .map(Number)
+    .filter(j => {
+      const ap = S.apuestas[j]||{};
+      return ap[p.id] || ap[p.p];
+    })
+    .sort((a,b) => b-a);
+
+  let hayHistorial = jornadasConApuestas.length > 0;
+
+  for(const j of jornadasConApuestas){
     const ap=S.apuestas[j]||{};
     const posInd=getPos(p.id,j);
     const posPar=getPos(p.p,j);
-    const ptInd=PARTIDOS[posInd-1];
-    const ptPar=PARTIDOS[posPar-1];
+    // Use current PARTIDOS for current jornada, fetch for historical
+    let ptInd = j===JORNADA_ACTUAL ? PARTIDOS[posInd-1] : (S.partidosHistorico?.[j]?.[posInd-1] || {l:'?',v:'?',r:null,c:false});
+    let ptPar = j===JORNADA_ACTUAL ? PARTIDOS[posPar-1] : (S.partidosHistorico?.[j]?.[posPar-1] || {l:'?',v:'?',r:null,c:false});
     const aInd=ap[p.id];
     const aPar=ap[p.p];
     if(!aInd&&!aPar) continue;
-    hayHistorial=true;
 
     const apBadge=(a,pt,isPleno)=>{
       if(isPleno){const pk=ap['pleno_'+p.id]||{};return pk.l&&pk.v?`<span class="badge b-teal">⭐${pk.l}-${pk.v}</span>`:`<span style="color:var(--text-ter);">—</span>`;}
@@ -1471,6 +1519,87 @@ function compartirRanking(){
   });
   const url=`https://wa.me/?text=${encodeURIComponent(txt)}`;
   window.open(url,'_blank');
+}
+
+// ============ EDICION DE PERFIL ============
+function editarFoto(pid){
+  document.getElementById('foto-input').click();
+}
+
+async function subirFoto(input, pid){
+  const file = input.files[0];
+  if(!file) return;
+  
+  // Compress and convert to base64
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    const img = new Image();
+    img.onload = async () => {
+      const canvas = document.createElement('canvas');
+      const size = 120;
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      // Crop to square from center
+      const min = Math.min(img.width, img.height);
+      const sx = (img.width - min) / 2;
+      const sy = (img.height - min) / 2;
+      ctx.drawImage(img, sx, sy, min, min, 0, 0, size, size);
+      const base64 = canvas.toDataURL('image/jpeg', 0.8);
+      
+      // Save to Supabase
+      try {
+        const supa = getSupa();
+        await supa.from('perfiles').upsert({ jugador_id: pid, foto: base64 });
+        // Update local AVATARS
+        AVATARS[pid] = base64;
+        // Re-render
+        renderYo();
+        renderLogin();
+      } catch(e) {
+        console.error('Error subiendo foto:', e);
+        alert('Error al guardar la foto');
+      }
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+async function editarNombre(pid){
+  const p = jugador(pid);
+  if(!p) return;
+  const nuevoNombre = prompt('Nuevo nombre:', p.n);
+  if(!nuevoNombre || nuevoNombre.trim() === p.n) return;
+  
+  try {
+    const supa = getSupa();
+    await supa.from('perfiles').upsert({ jugador_id: pid, nombre: nuevoNombre.trim() });
+    // Update local JJ
+    const jj = JJ.find(j => j.id === pid);
+    if(jj) jj.n = nuevoNombre.trim();
+    renderYo();
+    renderLogin();
+  } catch(e) {
+    console.error('Error cambiando nombre:', e);
+    alert('Error al guardar el nombre');
+  }
+}
+
+async function cargarPerfiles(){
+  try {
+    const supa = getSupa();
+    const { data } = await supa.from('perfiles').select('*');
+    if(data) {
+      data.forEach(row => {
+        if(row.foto) AVATARS[row.jugador_id] = row.foto;
+        if(row.nombre) {
+          const jj = JJ.find(j => j.id === row.jugador_id);
+          if(jj) jj.n = row.nombre;
+        }
+      });
+    }
+  } catch(e) { console.warn('Error cargando perfiles:', e); }
 }
 
 // ============ INIT ============
