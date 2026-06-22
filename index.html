@@ -1081,9 +1081,20 @@ function renderGlobalTable(p,ap){
     let aBadge='';
     if(pt.pleno){
       const pap=ap['pleno_'+ent.id]||{};
-      aBadge=pap.l&&pap.v
-        ?`<span style="display:inline-flex;align-items:center;justify-content:center;height:30px;min-width:60px;font-size:13px;font-weight:800;border-radius:6px;background:#e8e8ed;color:#1a1a1a;border:1.5px solid #c7c7cc;flex-shrink:0;">⭐${pap.l}-${pap.v}</span>`
-        :`<span style="display:inline-flex;align-items:center;justify-content:center;height:30px;width:44px;font-size:16px;color:var(--text-ter);flex-shrink:0;">—</span>`;
+      if(pap.l&&pap.v){
+        // Check if pleno result is available and if correct
+        let pBg='#e8e8ed', pColor='#1a1a1a', pBorder='#c7c7cc';
+        if(pt.marcador){
+          const [gl,gv]=pt.marcador.split('-');
+          const ok=pap.l===gl&&pap.v===gv;
+          pBg=ok?'var(--green-bg)':'var(--red-bg)';
+          pColor=ok?'var(--green-text)':'var(--red-text)';
+          pBorder=ok?'var(--green-text)':'var(--red-text)';
+        }
+        aBadge=`<span style="display:inline-flex;align-items:center;justify-content:center;height:30px;min-width:60px;font-size:13px;font-weight:800;border-radius:6px;background:${pBg};color:${pColor};border:1.5px solid ${pBorder};flex-shrink:0;">⭐${pap.l}-${pap.v}</span>`;
+      } else {
+        aBadge=`<span style="display:inline-flex;align-items:center;justify-content:center;height:30px;width:44px;font-size:16px;color:var(--text-ter);flex-shrink:0;">—</span>`;
+      }
     } else {
       if(a){
         let bg='#e8e8ed', color='#1a1a1a', border='#c7c7cc';
@@ -1372,14 +1383,21 @@ function renderYo(){
   let totalInd=0,aciertosInd=0,totalPar=0,aciertosPar=0,plenosAcertados=0;
   let mejorJornada=0,mejorJornadaN=0,rachMax=0,racha=0;
 
-  for(let j=1;j<=JORNADA_ACTUAL;j++){
+  // Solo jornadas donde el jugador apostó
+  const jornadasApostadas = Object.keys(S.apuestas).map(Number)
+    .filter(j => S.apuestas[j][p.id] || S.apuestas[j][p.p]);
+
+  for(const j of jornadasApostadas){
     const ap=S.apuestas[j]||{};
     const posInd=getPos(p.id,j);
     const posPar=getPos(p.p,j);
-    const ptInd=PARTIDOS[posInd-1];
-    const ptPar=PARTIDOS[posPar-1];
+    // Use current PARTIDOS for current jornada, historical for past
+    const partidosJ = j===JORNADA_ACTUAL ? PARTIDOS : (S.partidosHistorico?.[j] || []);
+    const ptInd=partidosJ[posInd-1];
+    const ptPar=partidosJ[posPar-1];
     let ptsJornada=0;
-    if(ptInd&&ptInd.c&&ptInd.r){
+    // Only count if we have apostado AND partido has result
+    if(ap[p.id] && ptInd&&ptInd.c&&ptInd.r){
       totalInd++;
       if(!ptInd.pleno&&ap[p.id]===ptInd.r){aciertosInd++;ptsJornada++;}
       if(ptInd.pleno){
@@ -1387,10 +1405,15 @@ function renderYo(){
         const [gl,gv]=(ptInd.plenoResultado||'').split('-');
         if(pk.l&&gl&&pk.l===gl&&pk.v===gv){plenosAcertados++;ptsJornada+=2;}
       }
+    } else if(ap[p.id] && ptInd&&!ptInd.c){
+      // Apostó pero partido pendiente — cuenta como apostado
+      totalInd++;
     }
-    if(ptPar&&ptPar.c&&ptPar.r&&!ptPar.pleno){
+    if(ap[p.p] && ptPar&&ptPar.c&&ptPar.r&&!ptPar.pleno){
       totalPar++;
       if(ap[p.p]===ptPar.r){aciertosPar++;ptsJornada+=0.5;}
+    } else if(ap[p.p] && ptPar&&!ptPar?.c&&!ptPar?.pleno){
+      totalPar++;
     }
     if(ptsJornada>mejorJornada){mejorJornada=ptsJornada;mejorJornadaN=j;}
     if(ptsJornada>0){racha++;rachMax=Math.max(rachMax,racha);}
