@@ -156,7 +156,7 @@
       <div class="help-step"><div class="step-num">4</div><div><p style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:3px;">Cierre el jueves a las 22:00h</p><p style="font-size:13px;color:var(--text-sec);line-height:1.5;">Después no se pueden cambiar las apuestas. ¡No te olvides!</p></div></div>
     </div>
     <div class="card">
-      <p class="sec-label" style="margin-bottom:12px;">El Pleno al 15 ⭐</p>
+      <button onclick="verClasificacion('mundial')" class="btn btn-secondary" style="margin-bottom:12px;width:100%;"><i class="ti ti-table"></i> Ver clasificación grupos</button><p class="sec-label" style="margin-bottom:12px;">El Pleno al 15 ⭐</p>
       <div class="help-step"><div class="step-num">!</div><div><p style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:3px;">Es diferente al resto</p><p style="font-size:13px;color:var(--text-sec);line-height:1.5;">En el Pleno al 15 no se elige 1, X o 2. Hay que predecir los <strong>goles exactos</strong> de cada equipo.</p></div></div>
       <div class="help-step"><div class="step-num">2</div><div><p style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:3px;">Cuatro opciones por equipo</p><p style="font-size:13px;color:var(--text-sec);line-height:1.5;"><strong>0</strong> = ningún gol · <strong>1</strong> = exactamente 1 · <strong>2</strong> = exactamente 2 · <strong>M</strong> = 3 o más goles</p></div></div>
       <div class="help-step"><div class="step-num">3</div><div><p style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:3px;">Ejemplo práctico</p><p style="font-size:13px;color:var(--text-sec);line-height:1.5;">Si crees que el partido termina <strong>3-1</strong>, marca <strong>M</strong> para el local y <strong>1</strong> para el visitante.</p></div></div>
@@ -1321,19 +1321,36 @@ function renderRanking(){
     </div>`;
   });
 
-  // Card rows (for sharing - no highlight)
-  let cardRows='';
-  sorted.forEach((jj,i)=>{
-    const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
-    const pos=i+1;
-    cardRows+=`<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,0.07);">
-      <span style="font-size:14px;width:22px;text-align:center;color:rgba(255,255,255,0.5);">${medal||pos}</span>
-      ${avHtml(jj,36)}
-      <div style="flex:1;min-width:0;">
-        <p style="font-size:14px;font-weight:600;color:white;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${jj.n}</p>
-        <p style="font-size:11px;color:rgba(255,255,255,0.4);">+${ptsJornada[jj.id]||0} jornada</p>
+  // Card - podio top 3 + tabla resto
+  const top3=[sorted[1],sorted[0],sorted[2]].filter(Boolean); // 2nd-1st-3rd
+  const podioHeights=[70,90,60];
+  const podioColors=['#C0C0C0','#FFD700','#CD7F32'];
+  const podioSizes=[44,56,40];
+
+  let podioHtml=`<div style="display:flex;align-items:flex-end;justify-content:center;gap:8px;margin:8px 0 20px;">`;
+  top3.forEach((jj,i)=>{
+    const realIdx=sorted.indexOf(jj);
+    const h=podioHeights[i];
+    const color=podioColors[i];
+    const size=podioSizes[i];
+    podioHtml+=`<div style="display:flex;flex-direction:column;align-items:center;gap:6px;flex:1;">
+      ${avHtml(jj,size)}
+      <p style="font-size:${i===1?13:11}px;font-weight:700;color:white;text-align:center;">${jj.n}</p>
+      <p style="font-size:${i===1?18:15}px;font-weight:800;color:${color};">${acum[jj.id]}</p>
+      <div style="background:${color}22;border:1px solid ${color}44;border-radius:8px 8px 0 0;height:${h}px;width:100%;display:flex;align-items:center;justify-content:center;">
+        <span style="font-size:${i===1?28:22}px;">${i===0?'🥈':i===1?'🥇':'🥉'}</span>
       </div>
-      <p style="font-size:20px;font-weight:800;color:${i===0?'#FFD700':'white'};flex-shrink:0;">${acum[jj.id]}<span style="font-size:11px;font-weight:400;color:rgba(255,255,255,0.4);"> pts</span></p>
+    </div>`;
+  });
+  podioHtml+=`</div>`;
+
+  let cardRows=podioHtml;
+  sorted.slice(3).forEach((jj,i)=>{
+    cardRows+=`<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid rgba(255,255,255,0.07);">
+      <span style="font-size:13px;width:20px;text-align:center;color:rgba(255,255,255,0.4);">${i+4}</span>
+      ${avHtml(jj,32)}
+      <p style="font-size:13px;font-weight:500;color:white;flex:1;">${jj.n}</p>
+      <p style="font-size:16px;font-weight:800;color:white;">${acum[jj.id]}<span style="font-size:10px;color:rgba(255,255,255,0.4);"> pts</span></p>
     </div>`;
   });
 
@@ -1705,6 +1722,125 @@ async function cargarPerfiles(){
       });
     }
   } catch(e) { console.warn('Error cargando perfiles:', e); }
+}
+
+
+// ============ CLASIFICACION MODAL ============
+const S_clasi = { grupos: null, liga1: null, liga2: null };
+
+async function verClasificacion(tipo) {
+  let modal = document.getElementById('modal-clasi');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'modal-clasi';
+    modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;flex-direction:column;justify-content:flex-end;';
+    modal.onclick = (e) => { if(e.target===modal) cerrarClasificacion(); };
+    document.body.appendChild(modal);
+  }
+  modal.innerHTML = `<div style="background:var(--bg);border-radius:20px 20px 0 0;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;">
+    <div style="padding:12px 16px;border-bottom:0.5px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+      <p style="font-size:15px;font-weight:700;color:var(--text);margin:0;">Clasificaciones</p>
+      <button onclick="cerrarClasificacion()" style="background:none;border:none;cursor:pointer;padding:4px;"><i class="ti ti-x" style="font-size:18px;color:var(--text-sec);"></i></button>
+    </div>
+    <div id="clasi-tabs" style="display:flex;border-bottom:0.5px solid var(--border);overflow-x:auto;flex-shrink:0;"></div>
+    <div id="clasi-content" style="overflow-y:auto;padding:0 12px 20px;flex:1;">
+      <div style="text-align:center;padding:40px;color:var(--text-sec);"><i class="ti ti-loader" style="font-size:32px;display:block;margin-bottom:8px;animation:spin 1s linear infinite;"></i><p>Cargando...</p></div>
+    </div>
+  </div>`;
+  modal.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+  await cargarClasificacion(tipo || 'mundial');
+}
+
+function cerrarClasificacion() {
+  const modal = document.getElementById('modal-clasi');
+  if (modal) modal.style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+async function cargarClasificacion(tipo) {
+  const tabs = document.getElementById('clasi-tabs');
+  if (!tabs) return;
+  const allTipos = [
+    { id: 'mundial', label: '🌍 Mundial' },
+    { id: 'liga1', label: '⚽ Primera' },
+    { id: 'liga2', label: 'Segunda' },
+  ];
+  tabs.innerHTML = allTipos.map(t => `
+    <div onclick="cargarClasificacion('${t.id}')" style="padding:8px 14px;cursor:pointer;border-bottom:${t.id===tipo?'2px solid var(--blue)':'2px solid transparent'};white-space:nowrap;flex-shrink:0;">
+      <p style="font-size:12px;font-weight:${t.id===tipo?600:400};color:${t.id===tipo?'var(--blue-text)':'var(--text-sec)'};margin:0;">${t.label}</p>
+    </div>`).join('');
+
+  const content = document.getElementById('clasi-content');
+  if (!content) return;
+
+  if (tipo === 'mundial' && S_clasi.grupos) { renderClasificacion(tipo, S_clasi.grupos); return; }
+  if (tipo === 'liga1' && S_clasi.liga1) { renderClasificacion(tipo, S_clasi.liga1); return; }
+  if (tipo === 'liga2' && S_clasi.liga2) { renderClasificacion(tipo, S_clasi.liga2); return; }
+
+  content.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-sec);"><i class="ti ti-loader" style="font-size:32px;display:block;margin-bottom:8px;animation:spin 1s linear infinite;"></i><p style="font-size:14px;">Cargando...</p></div>';
+
+  try {
+    const res = await fetch(SUPA_FUNCTIONS_URL + '/quiniela-jornada', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${ANON_KEY}` },
+      body: JSON.stringify({ tipo })
+    });
+    const data = await res.json();
+    if (tipo === 'mundial') S_clasi.grupos = data;
+    if (tipo === 'liga1') S_clasi.liga1 = data;
+    if (tipo === 'liga2') S_clasi.liga2 = data;
+    renderClasificacion(tipo, data);
+  } catch(e) {
+    content.innerHTML = '<p style="text-align:center;padding:24px;color:var(--text-ter);">Error cargando datos</p>';
+  }
+}
+
+function renderFilaClasi(pos, name, pts, accent) {
+  const bl = accent !== 'transparent' ? `border-left:2px solid ${accent};padding-left:8px;` : '';
+  return `<div style="display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:0.5px solid var(--border-light);${bl}">
+    <span style="font-size:11px;color:var(--text-ter);width:18px;text-align:center;flex-shrink:0;">${pos}</span>
+    <span style="font-size:13px;color:var(--text);font-weight:${accent!=='transparent'?500:400};flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${name}</span>
+    <span style="font-size:14px;font-weight:600;color:var(--text);flex-shrink:0;">${pts}</span>
+  </div>`;
+}
+
+function renderClasificacion(tipo, data) {
+  const content = document.getElementById('clasi-content');
+  if (!content) return;
+
+  if (tipo === 'mundial') {
+    const grupos = data.grupos || [];
+    let grupoActual = grupos[0]?.nombre || '';
+    const doRender = (nombre) => {
+      const grupo = grupos.find(g => g.nombre === nombre);
+      if (!grupo) return '';
+      return grupo.equipos.map(eq => renderFilaClasi(eq.pos, eq.name, eq.pts, eq.clasificado ? 'var(--blue)' : 'transparent')).join('') +
+        '<div style="padding:6px 0;display:flex;align-items:center;gap:6px;"><div style="width:6px;height:6px;border-radius:50%;background:var(--blue);"></div><span style="font-size:10px;color:var(--text-sec);">Clasificado a octavos</span></div>';
+    };
+    const grupoTabs = grupos.map(g =>
+      `<span id="gtab-${g.nombre}" onclick="switchGrupo('${g.nombre}')" style="padding:4px 8px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:500;background:${g.nombre===grupoActual?'var(--blue-bg)':'transparent'};color:${g.nombre===grupoActual?'var(--blue-text)':'var(--text-sec)'};">${g.nombre}</span>`
+    ).join('');
+    content.innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:4px;padding:8px 0 12px;">${grupoTabs}</div><div id="grupo-content">${doRender(grupoActual)}</div>`;
+    window.switchGrupo = (nombre) => {
+      document.querySelectorAll('[id^="gtab-"]').forEach(el => {
+        const active = el.id === `gtab-${nombre}`;
+        el.style.background = active ? 'var(--blue-bg)' : 'transparent';
+        el.style.color = active ? 'var(--blue-text)' : 'var(--text-sec)';
+      });
+      const gc = document.getElementById('grupo-content');
+      if (gc) gc.innerHTML = doRender(nombre);
+    };
+  } else {
+    const equipos = data.equipos || [];
+    const header = '<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:0.5px solid var(--border);"><span style="font-size:10px;color:var(--text-ter);width:18px;text-align:center;">#</span><span style="font-size:10px;color:var(--text-ter);flex:1;">Equipo</span><span style="font-size:10px;color:var(--text-ter);">Pts</span></div>';
+    const rows = equipos.map((eq, i) => {
+      const pos = i + 1;
+      const accent = pos <= 4 ? '#1a2550' : pos <= 6 ? '#2e7d32' : pos >= equipos.length - 2 ? '#c62828' : 'transparent';
+      return renderFilaClasi(pos, eq.name, eq.pts, accent);
+    }).join('');
+    content.innerHTML = header + rows + '<div style="padding:8px 0;display:flex;gap:12px;flex-wrap:wrap;"><div style="display:flex;align-items:center;gap:4px;"><div style="width:6px;height:6px;border-radius:50%;background:#1a2550;"></div><span style="font-size:10px;color:var(--text-sec);">Champions</span></div><div style="display:flex;align-items:center;gap:4px;"><div style="width:6px;height:6px;border-radius:50%;background:#2e7d32;"></div><span style="font-size:10px;color:var(--text-sec);">Europa</span></div><div style="display:flex;align-items:center;gap:4px;"><div style="width:6px;height:6px;border-radius:50%;background:#c62828;"></div><span style="font-size:10px;color:var(--text-sec);">Descenso</span></div></div>';
+  }
 }
 
 // ============ INIT ============
