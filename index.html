@@ -88,9 +88,9 @@
   .sec-label{font-size:11px;font-weight:600;color:var(--text-sec);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;}
   input[type="text"]{width:100%;padding:11px 14px;border:0.5px solid var(--border);border-radius:var(--radius-sm);font-size:15px;background:var(--card);color:var(--text);outline:none;}
   input[type="text"]:focus{border-color:var(--blue);}
-  .global-row{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:0.5px solid var(--border-light);transition:background 0.1s;} .global-row > *:last-child{margin-left:auto;flex-shrink:0;}
+  .global-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:0.5px solid var(--border-light);transition:background 0.1s;}
   .global-row:last-child{border-bottom:none;}
-  .global-row.me{background:var(--blue-bg);border-radius:var(--radius-sm);padding:8px 6px;margin:2px -6px;border-bottom:none;}
+  .global-row.me{background:var(--blue-bg);border-radius:var(--radius-sm);padding:10px 8px;margin:2px -8px;border-bottom:none;}
   .global-row.me+.global-row{border-top:0.5px solid var(--border-light);}
   .locked-banner{background:var(--red-bg);border:0.5px solid var(--red-border);border-radius:var(--radius-sm);padding:14px;text-align:center;margin-bottom:14px;}
   .modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:200;display:flex;align-items:flex-end;justify-content:center;}
@@ -1091,9 +1091,9 @@ function renderGlobalTable(p,ap){
           pColor=ok?'var(--green-text)':'var(--red-text)';
           pBorder=ok?'var(--green-text)':'var(--red-text)';
         }
-        aBadge=`<span style="display:inline-flex;align-items:center;justify-content:center;height:30px;min-width:60px;font-size:13px;font-weight:800;border-radius:6px;background:${pBg};color:${pColor};border:1.5px solid ${pBorder};flex-shrink:0;">⭐${pap.l}-${pap.v}</span>`;
+        aBadge=`<span style="display:inline-flex;align-items:center;justify-content:center;height:30px;min-width:52px;font-size:13px;font-weight:800;border-radius:6px;background:${pBg};color:${pColor};border:1.5px solid ${pBorder};flex-shrink:0;margin-left:auto;">${pap.l}-${pap.v}</span>`;
       } else {
-        aBadge=`<span style="display:inline-flex;align-items:center;justify-content:center;height:30px;width:44px;font-size:16px;color:var(--text-ter);flex-shrink:0;">—</span>`;
+        aBadge=`<span style="display:inline-flex;align-items:center;justify-content:center;height:30px;width:44px;font-size:16px;color:var(--text-ter);flex-shrink:0;margin-left:auto;">—</span>`;
       }
     } else {
       if(a){
@@ -1104,7 +1104,7 @@ function renderGlobalTable(p,ap){
           color=ok?'var(--green-text)':'var(--red-text)';
           border=ok?'var(--green-text)':'var(--red-text)';
         }
-        aBadge=`<span style="display:inline-flex;align-items:center;justify-content:center;height:30px;width:44px;font-size:14px;font-weight:800;border-radius:6px;background:${bg};color:${color};border:1.5px solid ${border};flex-shrink:0;">${a}</span>`;
+        aBadge=`<span style="display:inline-flex;align-items:center;justify-content:center;height:30px;width:44px;font-size:14px;font-weight:800;border-radius:6px;background:${bg};color:${color};border:1.5px solid ${border};flex-shrink:0;margin-left:auto;">${a}</span>`;
       } else {
         aBadge=`<div style="display:flex;align-items:center;justify-content:center;height:30px;min-width:40px;flex-shrink:0;"><span style="font-size:16px;color:var(--text-ter);">—</span></div>`;
       }
@@ -1130,9 +1130,9 @@ function renderGlobalTable(p,ap){
       ?`onclick="S.step=${isMe?1:2};renderJornada();"`
       :'';
 
-    h+=`<div class="global-row${isMe||isMePar?' me':''}" style="padding:12px 0;${isMe||isMePar?'cursor:pointer;':''}" ${clickFn}>
+    h+=`<div class="global-row${isMe||isMePar?' me':''}" style="${isMe||isMePar?'cursor:pointer;':''}" ${clickFn}>
       ${av}
-      <div style="flex:1;min-width:0;">
+      <div style="flex:1;min-width:0;overflow:hidden;">
         <p style="font-size:15px;font-weight:${isMe||isMePar?700:600};color:${isMe?'var(--blue-text)':isMePar?'var(--teal-text)':'var(--text)'};margin-bottom:3px;">
           ${ent.n}${isMe?' 👈':''}${editing?' <span style="font-size:10px;font-weight:400;opacity:0.7;">editando...</span>':''}
           ${editBtn}
@@ -1424,8 +1424,19 @@ function renderYo(){
 
   let h=`<div class="safe-top"></div>
   <div class="topbar" style="text-align:center;padding-bottom:12px;">
-    ${avHtml(p,72)}
-    <p style="font-size:20px;font-weight:700;color:var(--text);margin-top:8px;">${p.n}</p>
+    <div style="position:relative;display:inline-block;margin:0 auto 8px;">
+      ${avHtml(p,72)}
+      <button onclick="editarFoto('${p.id}')" style="position:absolute;bottom:0;right:0;width:26px;height:26px;border-radius:50%;background:var(--blue);border:2px solid white;cursor:pointer;display:flex;align-items:center;justify-content:center;">
+        <i class="ti ti-camera" style="font-size:12px;color:white;"></i>
+      </button>
+    </div>
+    <input type="file" id="foto-input-${p.id}" accept="image/*" style="display:none;" onchange="subirFoto(this,'${p.id}')">
+    <div style="display:flex;align-items:center;gap:8px;justify-content:center;margin-top:8px;margin-bottom:4px;">
+      <p style="font-size:20px;font-weight:700;color:var(--text);">${p.n}</p>
+      <button onclick="editarNombre('${p.id}')" style="background:none;border:none;cursor:pointer;padding:4px;">
+        <i class="ti ti-pencil" style="font-size:14px;color:var(--text-sec);"></i>
+      </button>
+    </div>
     <p style="font-size:13px;color:var(--text-sec);">${PP[p.p].n}</p>
   </div>
   <div class="page" style="padding-top:4px;">
@@ -1485,16 +1496,30 @@ function renderYo(){
     if(!aInd&&!aPar) continue;
 
     const apBadge=(a,pt,isPleno)=>{
-      if(isPleno){const pk=ap['pleno_'+p.id]||{};return pk.l&&pk.v?`<span class="badge b-teal">⭐${pk.l}-${pk.v}</span>`:`<span style="color:var(--text-ter);">—</span>`;}
-      if(!a)return`<span style="color:var(--text-ter);">—</span>`;
-      const cls=a==='1'?'ap-1':a==='X'?'ap-x':'ap-2';
-      return`<span style="display:inline-flex;align-items:center;justify-content:center;height:30px;min-width:40px;border-radius:6px;font-size:13px;font-weight:800;" class="${cls}">${a}</span>`;
+      if(isPleno){
+        const pk=ap['pleno_'+p.id]||{};
+        if(!pk.l||!pk.v) return`<span style="color:var(--text-ter);">—</span>`;
+        let bg='#e8e8ed',color='#1a1a1a',border='#c7c7cc';
+        if(pt?.marcador){
+          const [gl,gv]=pt.marcador.replace(' 🔴','').split('-');
+          const ok=pk.l===gl&&pk.v===gv;
+          bg=ok?'var(--green-bg)':'var(--red-bg)';
+          color=ok?'var(--green-text)':'var(--red-text)';
+          border=ok?'var(--green-text)':'var(--red-text)';
+        }
+        return`<span style="display:inline-flex;align-items:center;justify-content:center;height:30px;min-width:52px;border-radius:6px;font-size:13px;font-weight:800;background:${bg};color:${color};border:1.5px solid ${border};">⭐${pk.l}-${pk.v}</span>`;
+      }
+      if(!a)return`<span style="display:inline-flex;align-items:center;justify-content:center;height:30px;width:44px;font-size:16px;color:var(--text-ter);">—</span>`;
+      let bg='#e8e8ed',color='#1a1a1a',border='#c7c7cc';
+      if(pt?.c&&pt?.r){
+        const ok=a===pt.r;
+        bg=ok?'var(--green-bg)':'var(--red-bg)';
+        color=ok?'var(--green-text)':'var(--red-text)';
+        border=ok?'var(--green-text)':'var(--red-text)';
+      }
+      return`<span style="display:inline-flex;align-items:center;justify-content:center;height:30px;width:44px;border-radius:6px;font-size:14px;font-weight:800;background:${bg};color:${color};border:1.5px solid ${border};">${a}</span>`;
     };
-    const resBadge=(a,pt)=>{
-      if(!pt?.c||!pt?.r||!a||pt.pleno)return'';
-      const ok=a===pt.r;
-      return`<span class="badge ${ok?'b-green':'b-red'}" style="margin-left:5px;">${ok?'✓':'✗'}</span>`;
-    };
+    const resBadge=()=>'';
 
     h+=`<div class="card" style="margin-bottom:8px;">
       <p style="font-size:12px;font-weight:600;color:var(--text-sec);margin-bottom:10px;">Jornada ${j}</p>
@@ -1502,12 +1527,12 @@ function renderYo(){
         <div>
           <p style="font-size:10px;font-weight:700;color:var(--blue-text);text-transform:uppercase;margin-bottom:3px;">Tu partido</p>
           <p style="font-size:11px;color:var(--text-sec);margin-bottom:5px;">${ptInd?ptInd.l+' — '+ptInd.v:'—'}</p>
-          <div style="display:flex;align-items:center;">${apBadge(aInd,ptInd,ptInd?.pleno)}${resBadge(aInd,ptInd)}</div>
+          <div style="display:flex;align-items:center;">${apBadge(aInd,ptInd,ptInd?.pleno)}</div>
         </div>
         <div>
           <p style="font-size:10px;font-weight:700;color:var(--teal-text);text-transform:uppercase;margin-bottom:3px;">Pareja</p>
           <p style="font-size:11px;color:var(--text-sec);margin-bottom:5px;">${ptPar?ptPar.l+' — '+ptPar.v:'—'}</p>
-          <div style="display:flex;align-items:center;">${apBadge(aPar,ptPar,ptPar?.pleno)}${resBadge(aPar,ptPar)}</div>
+          <div style="display:flex;align-items:center;">${apBadge(aPar,ptPar,ptPar?.pleno)}</div>
         </div>
       </div>
     </div>`;
@@ -1546,7 +1571,7 @@ function compartirRanking(){
 
 // ============ EDICION DE PERFIL ============
 function editarFoto(pid){
-  document.getElementById('foto-input').click();
+  document.getElementById('foto-input-'+pid).click();
 }
 
 async function subirFoto(input, pid){
