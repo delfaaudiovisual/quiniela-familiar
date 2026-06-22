@@ -108,6 +108,7 @@
   .pleno-btns{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;flex:1;}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
 <div id="app">
@@ -1292,49 +1293,73 @@ function renderRanking(){
   const p=jugador(S.player);
   if(!p){document.getElementById('tab-ranking').innerHTML='<p style="text-align:center;padding:40px;color:var(--text-sec);">Inicia sesión para ver el ranking</p>';return;}
 
-  // Calcular puntos acumulados
   let acum={};
   JJ.forEach(j=>acum[j.id]=0);
   for(let j=1;j<=JORNADA_ACTUAL;j++){
     const pts=calcPuntos(j);
     JJ.forEach(jj=>{acum[jj.id]+=(pts[jj.id]||0);});
   }
-
   const sorted=[...JJ].sort((a,b)=>acum[b.id]-acum[a.id]);
-  const pts68=calcPuntos(JORNADA_ACTUAL);
+  const ptsJornada=calcPuntos(JORNADA_ACTUAL);
 
-  let h=`<div class="safe-top"></div>
-  <div class="topbar" style="text-align:center;">
-    <p style="font-size:18px;font-weight:700;color:var(--text);">🏆 Clasificación</p>
-    <p style="font-size:13px;color:var(--text-sec);">Temporada · Jornada ${JORNADA_ACTUAL}</p>
-  </div>
-  <div class="page" style="padding-top:4px;">`;
-
+  // Table rows
+  let tableRows='';
   sorted.forEach((jj,i)=>{
     const isMe=jj.id===p.id;
     const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':`${i+1}.`;
-    const av=avHtml(jj,44);
-
-    h+=`<div class="card" style="display:flex;align-items:center;gap:12px;margin-bottom:8px;${isMe?'border:1.5px solid var(--blue);background:var(--blue-bg);':''}">
+    tableRows+=`<div class="card" style="display:flex;align-items:center;gap:12px;margin-bottom:8px;${isMe?'border:1.5px solid var(--blue);background:var(--blue-bg);':''}">
       <span style="font-size:20px;width:28px;text-align:center;">${medal}</span>
-      ${av}
+      ${avHtml(jj,44)}
       <div style="flex:1;">
         <p style="font-size:15px;font-weight:${isMe?700:600};color:${isMe?'var(--blue-text)':'var(--text)'};">${jj.n}${isMe?' 👈':''}</p>
-        <p style="font-size:12px;color:var(--text-sec);">Jornada: +${pts68[jj.id]||0} pts</p>
+        <p style="font-size:12px;color:var(--text-sec);">+${ptsJornada[jj.id]||0} esta jornada</p>
       </div>
-      <div style="text-align:right;">
+      <div style="text-align:right;flex-shrink:0;">
         <p style="font-size:22px;font-weight:800;color:${isMe?'var(--blue-text)':'var(--text)'};">${acum[jj.id]}</p>
         <p style="font-size:11px;color:var(--text-sec);">pts</p>
       </div>
     </div>`;
   });
 
-  // Compartir
-  h+=`<button class="btn btn-secondary" onclick="compartirRanking()" style="margin-top:8px;">
-    <i class="ti ti-brand-whatsapp"></i> Compartir ranking
-  </button>`;
+  // Card rows (for sharing - no highlight)
+  let cardRows='';
+  sorted.forEach((jj,i)=>{
+    const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
+    const pos=i+1;
+    cardRows+=`<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,0.07);">
+      <span style="font-size:14px;width:22px;text-align:center;color:rgba(255,255,255,0.5);">${medal||pos}</span>
+      ${avHtml(jj,36)}
+      <div style="flex:1;min-width:0;">
+        <p style="font-size:14px;font-weight:600;color:white;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${jj.n}</p>
+        <p style="font-size:11px;color:rgba(255,255,255,0.4);">+${ptsJornada[jj.id]||0} jornada</p>
+      </div>
+      <p style="font-size:20px;font-weight:800;color:${i===0?'#FFD700':'white'};flex-shrink:0;">${acum[jj.id]}<span style="font-size:11px;font-weight:400;color:rgba(255,255,255,0.4);"> pts</span></p>
+    </div>`;
+  });
 
-  h+=`</div>`;
+  const h=`<div class="safe-top"></div>
+  <div class="topbar" style="text-align:center;">
+    <p style="font-size:18px;font-weight:700;color:var(--text);">🏆 Clasificación</p>
+    <p style="font-size:13px;color:var(--text-sec);">Temporada · Jornada ${JORNADA_ACTUAL}</p>
+  </div>
+  <div class="page" style="padding-top:4px;">
+    ${tableRows}
+    <button class="btn btn-secondary" onclick="compartirRanking()" style="margin-top:8px;width:100%;">
+      <i class="ti ti-share"></i> Compartir clasificación
+    </button>
+  </div>
+
+  <!-- Card oculta para compartir -->
+  <div id="ranking-card" style="position:fixed;left:-9999px;top:0;width:360px;padding:24px;background:linear-gradient(135deg,#1a2550 0%,#0f1829 60%,#1a2550 100%);">
+    <div style="text-align:center;margin-bottom:20px;">
+      <p style="font-size:12px;font-weight:600;color:rgba(255,255,255,0.4);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;">La Piripiniela 🎯</p>
+      <p style="font-size:24px;font-weight:800;color:white;margin-bottom:4px;">🏆 Clasificación</p>
+      <p style="font-size:12px;color:rgba(255,255,255,0.4);">Jornada ${JORNADA_ACTUAL} · Mundial 2026</p>
+    </div>
+    ${cardRows}
+    <p style="text-align:center;font-size:11px;color:rgba(255,255,255,0.3);margin-top:16px;">lapiripiniela.netlify.app</p>
+  </div>`;
+
   document.getElementById('tab-ranking').innerHTML=h;
 }
 
@@ -1551,22 +1576,54 @@ function renderYo(){
 }
 
 // ============ COMPARTIR RANKING ============
-function compartirRanking(){
-  const p=jugador(S.player);if(!p)return;
-  let acum={};
-  JJ.forEach(j=>acum[j.id]=0);
-  for(let j=1;j<=JORNADA_ACTUAL;j++){
-    const pts=calcPuntos(j);
-    JJ.forEach(jj=>{acum[jj.id]+=(pts[jj.id]||0);});
+async function compartirRanking(){
+  const card = document.getElementById('ranking-card');
+  if(!card) return;
+
+  const btn = document.querySelector('[onclick="compartirRanking()"]');
+  try {
+    if(btn) btn.innerHTML = '<i class="ti ti-loader" style="animation:spin 1s linear infinite;"></i> Generando imagen...';
+
+    // Move card to visible area temporarily for html2canvas
+    card.style.left = '-9999px';
+    card.style.top = '0';
+
+    const canvas = await html2canvas(card, {
+      backgroundColor: '#0f1829',
+      scale: 2,
+      useCORS: true,
+      allowTaint: true,
+      logging: false,
+      width: 360,
+    });
+
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+    const file = new File([blob], 'piripiniela-ranking.png', { type: 'image/png' });
+
+    // Try native share (iOS/Android)
+    if(navigator.share && navigator.canShare && navigator.canShare({ files: [file] })){
+      await navigator.share({ files: [file], title: 'La Piripiniela 🏆' });
+    } else {
+      // Download + show toast
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'piripiniela-ranking.png';
+      a.click();
+      URL.revokeObjectURL(url);
+      // Toast
+      const toast = document.createElement('div');
+      toast.innerHTML = '📥 Imagen descargada — ábrela y compártela por WhatsApp';
+      toast.style.cssText = 'position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:#1a2550;color:white;padding:12px 20px;border-radius:12px;font-size:14px;font-weight:600;z-index:9999;text-align:center;max-width:300px;box-shadow:0 4px 20px rgba(0,0,0,0.3);';
+      document.body.appendChild(toast);
+      setTimeout(()=>toast.remove(), 4000);
+    }
+  } catch(e) {
+    console.error('Error compartiendo:', e);
+    alert('No se pudo generar la imagen. Haz una captura de pantalla y compártela por WhatsApp.');
+  } finally {
+    if(btn) btn.innerHTML = '<i class="ti ti-share"></i> Compartir clasificación';
   }
-  const sorted=[...JJ].sort((a,b)=>acum[b.id]-acum[a.id]);
-  let txt=`🏆 La Piripiniela — Jornada ${JORNADA_ACTUAL}\n`;
-  sorted.forEach((jj,i)=>{
-    const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':`${i+1}.`;
-    txt+=`${medal} ${jj.n}: ${acum[jj.id]} pts\n`;
-  });
-  const url=`https://wa.me/?text=${encodeURIComponent(txt)}`;
-  window.open(url,'_blank');
 }
 
 // ============ EDICION DE PERFIL ============
