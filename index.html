@@ -391,6 +391,18 @@ try{const ss=localStorage.getItem('qff_v5');if(ss)S={...S,...JSON.parse(ss)};}ca
 
 function preloadDemo(){}
 
+// Cookie helpers — persisten entre Safari y PWA en iOS
+function setCookie(name, value, days){
+  days = days || 365;
+  const d = new Date();
+  d.setTime(d.getTime() + days*24*60*60*1000);
+  document.cookie = name+'='+value+';expires='+d.toUTCString()+';path=/;SameSite=Lax';
+}
+function getCookie(name){
+  const v = document.cookie.match('(^|;) ?'+name+'=([^;]*)(;|$)');
+  return v ? v[2] : null;
+}
+
 function save(){try{localStorage.setItem('qff_v5',JSON.stringify(S));}catch(e){}}
 function ini(n){return n.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);}
 function goTo(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');window.scrollTo(0,0);}
@@ -538,6 +550,14 @@ async function avisarPareja(jugadorId, mensaje) {
 }
 
 async function renderLogin(){
+  // Auto-login from cookie if no player in localStorage
+  if(!S.player){
+    const cookiePlayer = getCookie('qff_player');
+    if(cookiePlayer && jugador(cookiePlayer)){
+      await login(cookiePlayer);
+      return;
+    }
+  }
   // Load partidos first to get correct JORNADA_ACTUAL, then apuestas
   try { await cargarJornadaLoterías(); } catch(e){}
   try { await Promise.all([loadApuestasFromDB(JORNADA_ACTUAL), cargarPerfiles()]); } catch(e){}
@@ -757,6 +777,7 @@ async function saveEstado(jornada, clave, valor){
 
 async function login(pid){
   S.player=pid;save();
+  setCookie('qff_player', pid);
   document.getElementById('login-list').innerHTML='<div style="text-align:center;padding:40px;color:var(--text-sec);"><i class="ti ti-loader" style="font-size:32px;animation:spin 1s linear infinite;"></i><p style="margin-top:12px;font-size:14px;">Cargando...</p></div>';
   // Load partidos first (updates JORNADA_ACTUAL), then load apuestas for correct jornada
   await cargarJornadaLoterías();
@@ -771,7 +792,7 @@ function resetCache(){
   location.reload();
 }
 
-function logout(){S.player=null;save();renderLogin();goTo('s-login');}
+function logout(){S.player=null;save();setCookie('qff_player','',0);renderLogin();goTo('s-login');}
 
 // ============ JORNADA ============
 function renderJornada(){
