@@ -1082,8 +1082,8 @@ function renderGlobalTable(p,ap){
     if(pt.pleno){
       const pap=ap['pleno_'+ent.id]||{};
       aBadge=pap.l&&pap.v
-        ?`<span style="display:inline-flex;align-items:center;justify-content:center;height:30px;min-width:60px;font-size:13px;font-weight:800;border-radius:6px;background:#e8e8ed;color:#1a1a1a;border:1.5px solid #c7c7cc;flex-shrink:0;">⭐${pap.l}-${pap.v}</span>`
-        :`<span style="display:inline-flex;align-items:center;justify-content:center;height:30px;min-width:40px;font-size:16px;color:var(--text-ter);flex-shrink:0;">—</span>`;
+        ?`<span style="display:inline-flex;align-items:center;justify-content:center;height:30px;min-width:60px;font-size:13px;font-weight:800;border-radius:6px;background:#e8e8ed;color:#1a1a1a;border:1.5px solid #c7c7cc;flex-shrink:0;margin-left:auto;">⭐${pap.l}-${pap.v}</span>`
+        :`<span style="display:inline-flex;align-items:center;justify-content:center;height:30px;width:44px;font-size:16px;color:var(--text-ter);flex-shrink:0;margin-left:auto;">—</span>`;
     } else {
       if(a){
         let bg='#e8e8ed', color='#1a1a1a', border='#c7c7cc';
@@ -1093,7 +1093,7 @@ function renderGlobalTable(p,ap){
           color=ok?'var(--green-text)':'var(--red-text)';
           border=ok?'var(--green-text)':'var(--red-text)';
         }
-        aBadge=`<span style="display:inline-flex;align-items:center;justify-content:center;height:30px;min-width:40px;font-size:14px;font-weight:800;border-radius:6px;background:${bg};color:${color};border:1.5px solid ${border};flex-shrink:0;">${a}</span>`;
+        aBadge=`<span style="display:inline-flex;align-items:center;justify-content:center;height:30px;width:44px;font-size:14px;font-weight:800;border-radius:6px;background:${bg};color:${color};border:1.5px solid ${border};flex-shrink:0;margin-left:auto;">${a}</span>`;
       } else {
         aBadge=`<div style="display:flex;align-items:center;justify-content:center;height:30px;min-width:40px;flex-shrink:0;"><span style="font-size:16px;color:var(--text-ter);">—</span></div>`;
       }
@@ -1119,7 +1119,7 @@ function renderGlobalTable(p,ap){
       ?`onclick="S.step=${isMe?1:2};renderJornada();"`
       :'';
 
-    h+=`<div class="global-row${isMe||isMePar?' me':''}" style="padding:12px 0;display:flex;align-items:center;gap:12px;${isMe||isMePar?'cursor:pointer;':''}" ${clickFn}>
+    h+=`<div class="global-row${isMe||isMePar?' me':''}" style="padding:12px 0;${isMe||isMePar?'cursor:pointer;':''}" ${clickFn}>
       ${av}
       <div style="flex:1;min-width:0;">
         <p style="font-size:15px;font-weight:${isMe||isMePar?700:600};color:${isMe?'var(--blue-text)':isMePar?'var(--teal-text)':'var(--text)'};margin-bottom:3px;">
