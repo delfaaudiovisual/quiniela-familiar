@@ -566,11 +566,13 @@ async function renderLogin(){
           const sub = await reg.pushManager.getSubscription();
           if(sub) {
             const endpoint = sub.endpoint;
-            const { data } = await getSupa()
+            const { data: allSubs } = await getSupa()
               .from('push_subscriptions')
-              .select('jugador_id')
-              .filter('subscription->>endpoint', 'eq', endpoint)
-              .single();
+              .select('jugador_id, subscription');
+            const match = (allSubs || []).find(row => 
+              row.subscription?.endpoint === endpoint
+            );
+            const data = match ? { jugador_id: match.jugador_id } : null;
             if(data?.jugador_id && jugador(data.jugador_id)){
               setCookie('qff_player', data.jugador_id);
               await login(data.jugador_id);
