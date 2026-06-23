@@ -782,6 +782,8 @@ async function login(pid){
   // Load partidos first (updates JORNADA_ACTUAL), then load apuestas for correct jornada
   await cargarJornadaLoterías();
   await loadApuestasFromDB(JORNADA);
+  // Cargar historico de jornadas pasadas en segundo plano
+  cargarHistoricoAutomatico();
   // Registrar notificaciones en segundo plano
   registrarNotificaciones(pid);
   navTo('jornada');
@@ -1862,6 +1864,34 @@ function renderClasificacion(tipo, data) {
     }).join('');
     content.innerHTML = header + rows + '<div style="padding:8px 0;display:flex;gap:12px;flex-wrap:wrap;"><div style="display:flex;align-items:center;gap:4px;"><div style="width:6px;height:6px;border-radius:50%;background:#1a2550;"></div><span style="font-size:10px;color:var(--text-sec);">Champions</span></div><div style="display:flex;align-items:center;gap:4px;"><div style="width:6px;height:6px;border-radius:50%;background:#2e7d32;"></div><span style="font-size:10px;color:var(--text-sec);">Europa</span></div><div style="display:flex;align-items:center;gap:4px;"><div style="width:6px;height:6px;border-radius:50%;background:#c62828;"></div><span style="font-size:10px;color:var(--text-sec);">Descenso</span></div></div>';
   }
+}
+
+// ============ HISTORICO AUTOMATICO ============
+async function cargarHistoricoAutomatico(){
+  if(!S.partidosHistorico) S.partidosHistorico = {};
+  // Load all past jornadas that have apuestas but no partidos cached
+  const jornadasConApuestas = Object.keys(S.apuestas).map(Number)
+    .filter(j => j < JORNADA_ACTUAL && !S.partidosHistorico[j]);
+
+  if(jornadasConApuestas.length === 0) return;
+
+  for(const j of jornadasConApuestas){
+    try {
+      const res = await fetch(`${SUPA_FUNCTIONS_URL}/quiniela-jornada`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${ANON_KEY}` },
+        body: JSON.stringify({ jornadaHistorica: j })
+      });
+      if(res.ok){
+        const data = await res.json();
+        if(data.partidos && data.partidos.length >= 13){
+          S.partidosHistorico[j] = data.partidos;
+        }
+      }
+    } catch(e){ console.warn('Error cargando historico jornada', j, e); }
+  }
+  // Re-render ranking and Yo with updated data
+  renderRanking();
 }
 
 // ============ INIT ============
