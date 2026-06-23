@@ -841,6 +841,7 @@ function renderStep1(p){
   else{h+=`<div class="alert alert-info"><i class="ti ti-info-circle"></i><p>Apuesta antes del <strong>jueves a las 22:00h</strong>.</p></div>`;}
   h+=`<p class="sec-label">Tu partido — posición ${posInd}</p>`;
   h+=ptInd.pleno?plenoCardHtml(posInd,p.id,false):partidoCardHtml(posInd,p.id,false,true);
+  h+=`<button onclick="verClasificacion('mundial')" class="btn btn-secondary" style="margin-top:8px;width:100%;"><i class="ti ti-table"></i> Ver clasificación</button>`;
   if(!BLOQUEADO){
     h+=`<button class="btn btn-primary" style="margin-top:8px;font-size:15px;" onclick="goStep2()" ${tieneAp?'':'disabled'} style="${tieneAp?'':'opacity:0.4;'}margin-top:8px;">
       Siguiente — Apuesta de pareja <i class="ti ti-arrow-right"></i>
