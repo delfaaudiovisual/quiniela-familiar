@@ -550,13 +550,36 @@ async function avisarPareja(jugadorId, mensaje) {
 }
 
 async function renderLogin(){
-  // Auto-login from cookie if no player in localStorage
+  // Auto-login: try localStorage/cookie first, then push subscription
   if(!S.player){
+    // 1. Try cookie
     const cookiePlayer = getCookie('qff_player');
     if(cookiePlayer && jugador(cookiePlayer)){
       await login(cookiePlayer);
       return;
     }
+    // 2. Try push subscription endpoint matching
+    try {
+      if('serviceWorker' in navigator && 'PushManager' in window) {
+        const reg = await navigator.serviceWorker.getRegistration('/sw.js');
+        if(reg) {
+          const sub = await reg.pushManager.getSubscription();
+          if(sub) {
+            const endpoint = sub.endpoint;
+            const { data } = await getSupa()
+              .from('push_subscriptions')
+              .select('jugador_id')
+              .filter('subscription->>endpoint', 'eq', endpoint)
+              .single();
+            if(data?.jugador_id && jugador(data.jugador_id)){
+              setCookie('qff_player', data.jugador_id);
+              await login(data.jugador_id);
+              return;
+            }
+          }
+        }
+      }
+    } catch(e){ console.warn('Auto-login push check failed:', e); }
   }
   // Load partidos first to get correct JORNADA_ACTUAL, then apuestas
   try { await cargarJornadaLoterías(); } catch(e){}
