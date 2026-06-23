@@ -1484,23 +1484,23 @@ function renderYo(){
     const ptPar=partidosJ[posPar-1];
     let ptsJornada=0;
     // Only count if we have apostado AND partido has result
-    if(ap[p.id] && ptInd&&ptInd.c&&ptInd.r){
-      totalInd++;
-      if(!ptInd.pleno&&ap[p.id]===ptInd.r){aciertosInd++;ptsJornada++;}
-      if(ptInd.pleno){
-        const pk=ap['pleno_'+p.id]||{};
-        const [gl,gv]=(ptInd.plenoResultado||'').split('-');
-        if(pk.l&&gl&&pk.l===gl&&pk.v===gv){plenosAcertados++;ptsJornada+=2;}
+    if(ptInd&&ptInd.pleno){
+      // Pleno al 15 — check pleno_jugador
+      const pk=ap['pleno_'+p.id]||{};
+      if(pk.l&&pk.v){
+        totalInd++;
+        if(ptInd.c&&ptInd.marcador){
+          const [gl,gv]=ptInd.marcador.replace(' 🔴','').split('-');
+          if(pk.l===gl&&pk.v===gv){plenosAcertados++;aciertosInd++;ptsJornada+=2;}
+        }
       }
-    } else if(ap[p.id] && ptInd&&!ptInd.c){
-      // Apostó pero partido pendiente — cuenta como apostado
+    } else if(ap[p.id] && ptInd&&ptInd.c&&ptInd.r){
       totalInd++;
+      if(ap[p.id]===ptInd.r){aciertosInd++;ptsJornada++;}
     }
     if(ap[p.p] && ptPar&&ptPar.c&&ptPar.r&&!ptPar.pleno){
       totalPar++;
       if(ap[p.p]===ptPar.r){aciertosPar++;ptsJornada+=0.5;}
-    } else if(ap[p.p] && ptPar&&!ptPar?.c&&!ptPar?.pleno){
-      totalPar++;
     }
     if(ptsJornada>mejorJornada){mejorJornada=ptsJornada;mejorJornadaN=j;}
     // Only update racha if partido has a result (ignore pending jornadas)
