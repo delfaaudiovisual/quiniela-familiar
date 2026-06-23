@@ -1894,6 +1894,7 @@ async function cargarHistoricoAutomatico(){
   }
   // Re-render ranking and Yo with updated data
   renderRanking();
+  if(document.getElementById('tab-yo')?.children.length > 0) renderYo();
 }
 
 // ============ INIT ============
