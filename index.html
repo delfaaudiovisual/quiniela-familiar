@@ -1503,8 +1503,11 @@ function renderYo(){
       totalPar++;
     }
     if(ptsJornada>mejorJornada){mejorJornada=ptsJornada;mejorJornadaN=j;}
-    if(ptsJornada>0){racha++;rachMax=Math.max(rachMax,racha);}
-    else racha=0;
+    // Only update racha if partido has a result (ignore pending jornadas)
+    if(ptInd&&ptInd.c&&ptInd.r){
+      if(ptsJornada>0){racha++;rachMax=Math.max(rachMax,racha);}
+      else racha=0;
+    }
   }
   const rachaActual=racha;
   const pctTotal=(totalInd+totalPar)>0?Math.round((aciertosInd+aciertosPar)/(totalInd+totalPar)*100):0;
