@@ -565,7 +565,9 @@ async function renderLogin(){
   document.getElementById('login-list').innerHTML=`
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
       ${JJ.map(j=>{
-        const done=ap[j.id];
+        // Check individual apuesta OR pleno apuesta
+        const plenoAp = ap['pleno_'+j.id]||{};
+        const done = ap[j.id] || (plenoAp.l && plenoAp.v);
         return`<div onclick="login('${j.id}')" style="display:flex;align-items:center;gap:14px;cursor:pointer;padding:14px 16px;border-radius:var(--radius);background:var(--card);border:0.5px solid ${done?'var(--green-border)':'var(--border)'};box-shadow:var(--shadow);position:relative;transition:opacity 0.15s;" onmouseenter="this.style.opacity='0.8'" onmouseleave="this.style.opacity='1'">
           ${done?`<div style="position:absolute;top:8px;right:8px;width:18px;height:18px;border-radius:50%;background:var(--green-bg);display:flex;align-items:center;justify-content:center;"><i class="ti ti-check" style="font-size:11px;color:var(--green-text);"></i></div>`:''}
           ${AVATARS[j.id]?`<div style="width:56px;height:56px;border-radius:50%;background:url(${AVATARS[j.id]}) center/cover;border:2.5px solid ${done?'var(--green-border)':'var(--border)'};box-shadow:0 2px 8px rgba(0,0,0,0.1);flex-shrink:0;"></div>`:`<div class="av" style="width:56px;height:56px;font-size:16px;background:${j.c};color:${j.ct};border:2.5px solid ${done?'var(--green-border)':'var(--border)'};flex-shrink:0;">${ini(j.n)}</div>`}
@@ -1494,13 +1496,13 @@ function renderYo(){
           if(pk.l===gl&&pk.v===gv){plenosAcertados++;aciertosInd++;ptsJornada+=2;}
         }
       }
-    } else if(ap[p.id] && ptInd&&ptInd.c&&ptInd.r){
+    } else if(ap[p.id] && ptInd){
       totalInd++;
-      if(ap[p.id]===ptInd.r){aciertosInd++;ptsJornada++;}
+      if(ptInd.c&&ptInd.r&&ap[p.id]===ptInd.r){aciertosInd++;ptsJornada++;}
     }
-    if(ap[p.p] && ptPar&&ptPar.c&&ptPar.r&&!ptPar.pleno){
+    if(ap[p.p] && ptPar&&!ptPar.pleno){
       totalPar++;
-      if(ap[p.p]===ptPar.r){aciertosPar++;ptsJornada+=0.5;}
+      if(ptPar.c&&ptPar.r&&ap[p.p]===ptPar.r){aciertosPar++;ptsJornada+=0.5;}
     }
     if(ptsJornada>mejorJornada){mejorJornada=ptsJornada;mejorJornadaN=j;}
     // Only update racha if partido has a result (ignore pending jornadas)
