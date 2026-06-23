@@ -1847,12 +1847,21 @@ async function cargarClasificacion(tipo) {
   }
 }
 
-function renderFilaClasi(pos, name, pts, accent) {
+function formaCircle(r) {
+  const cfg={G:{bg:'#e8f5e9',c:'#2e7d32'},E:{bg:'#eeeeee',c:'#757575'},P:{bg:'#ffebee',c:'#c62828'}}[r]||{bg:'#eee',c:'#999'};
+  return `<span style="width:16px;height:16px;border-radius:50%;background:${cfg.bg};color:${cfg.c};font-size:8px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;">${r}</span>`;
+}
+
+function renderFilaClasi(pos, name, pts, accent, forma) {
   const bl = accent !== 'transparent' ? `border-left:2px solid ${accent};padding-left:8px;` : '';
+  const formaHtml = forma && forma.length > 0
+    ? `<div style="display:flex;gap:2px;flex-shrink:0;">${forma.slice(-3).map(formaCircle).join('')}</div>`
+    : '';
   return `<div style="display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:0.5px solid var(--border-light);${bl}">
     <span style="font-size:11px;color:var(--text-ter);width:18px;text-align:center;flex-shrink:0;">${pos}</span>
     <span style="font-size:13px;color:var(--text);font-weight:${accent!=='transparent'?500:400};flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${name}</span>
-    <span style="font-size:14px;font-weight:600;color:var(--text);flex-shrink:0;">${pts}</span>
+    ${formaHtml}
+    <span style="font-size:14px;font-weight:600;color:var(--text);flex-shrink:0;min-width:24px;text-align:right;">${pts}</span>
   </div>`;
 }
 
@@ -1888,7 +1897,7 @@ function renderClasificacion(tipo, data) {
     const rows = equipos.map((eq, i) => {
       const pos = i + 1;
       const accent = pos <= 4 ? '#1a2550' : pos <= 6 ? '#2e7d32' : pos >= equipos.length - 2 ? '#c62828' : 'transparent';
-      return renderFilaClasi(pos, eq.name, eq.pts, accent);
+      return renderFilaClasi(pos, eq.name, eq.pts, accent, eq.forma);
     }).join('');
     content.innerHTML = header + rows + '<div style="padding:8px 0;display:flex;gap:12px;flex-wrap:wrap;"><div style="display:flex;align-items:center;gap:4px;"><div style="width:6px;height:6px;border-radius:50%;background:#1a2550;"></div><span style="font-size:10px;color:var(--text-sec);">Champions</span></div><div style="display:flex;align-items:center;gap:4px;"><div style="width:6px;height:6px;border-radius:50%;background:#2e7d32;"></div><span style="font-size:10px;color:var(--text-sec);">Europa</span></div><div style="display:flex;align-items:center;gap:4px;"><div style="width:6px;height:6px;border-radius:50%;background:#c62828;"></div><span style="font-size:10px;color:var(--text-sec);">Descenso</span></div></div>';
   }
