@@ -725,6 +725,26 @@ async function cargarJornadaLoterías(modo='auto'){
 }
 
 // ============ SUPABASE FUNCTIONS ============
+async function loadAllApuestasFromDB(){
+  try {
+    const supa = getSupa();
+    // Load ALL apuestas for all jornadas at once
+    const [r1, r2] = await Promise.all([
+      supa.from('apuestas').select('*'),
+      supa.from('apuestas_pleno').select('*'),
+    ]);
+    if(r1.data) r1.data.forEach(row => {
+      if(!S.apuestas[row.jornada]) S.apuestas[row.jornada] = {};
+      S.apuestas[row.jornada][row.jugador_id] = row.apuesta;
+    });
+    if(r2.data) r2.data.forEach(row => {
+      if(!S.apuestas[row.jornada]) S.apuestas[row.jornada] = {};
+      S.apuestas[row.jornada]['pleno_'+row.pareja_id] = {l: row.goles_local, v: row.goles_visitante};
+    });
+    save();
+  } catch(e){ console.error('Error loading all apuestas:', e); }
+}
+
 async function loadApuestasFromDB(jornada){
   try {
     const supa = getSupa();
@@ -781,7 +801,7 @@ async function login(pid){
   document.getElementById('login-list').innerHTML='<div style="text-align:center;padding:40px;color:var(--text-sec);"><i class="ti ti-loader" style="font-size:32px;animation:spin 1s linear infinite;"></i><p style="margin-top:12px;font-size:14px;">Cargando...</p></div>';
   // Load partidos first (updates JORNADA_ACTUAL), then load apuestas for correct jornada
   await cargarJornadaLoterías();
-  await loadApuestasFromDB(JORNADA);
+  await loadAllApuestasFromDB();
   // Cargar historico de jornadas pasadas en segundo plano
   cargarHistoricoAutomatico();
   // Registrar notificaciones en segundo plano
