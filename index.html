@@ -622,10 +622,8 @@ function programarPolling() {
   // Clear existing
   if(_pollingInterval) { clearInterval(_pollingInterval); _pollingInterval = null; }
 
+  // Polling activo siempre que haya partidos sin cerrar (Mundial + cualquier día)
   const now = new Date();
-  const day = now.getDay();
-  const esFinDeSemana = day === 5 || day === 6 || day === 0 || day === 1;
-  if(!esFinDeSemana) return;
 
   // All done?
   const todosCerrados = PARTIDOS.filter(p=>!p.pleno).every(p=>p.c);
@@ -639,9 +637,13 @@ function programarPolling() {
   // Is there a match in play? (started <110 min ago and not closed)
   const hayPartidoEnJuego = ultimo && !ultimo.c && minDesdeUltimo < 110;
 
-  if(hayPartidoEnJuego || minHastaProximo < 30) {
+  // Partidos sin fecha/hora (escrutinio) pero sin cerrar — solo si no todos están cerrados
+  const hayPendientes = PARTIDOS.some(p => !p.c && !p.pleno);
+  const hayPendientesSinFecha = hayPendientes && PARTIDOS.some(p => !p.c && !p.pleno && !p.fecha);
+
+  if(hayPartidoEnJuego || minHastaProximo < 30 || hayPendientesSinFecha) {
     // Active: poll every 5 minutes
-    console.log(`Polling activo cada 5min — partido en juego o arranca en ${Math.round(minHastaProximo)}min`);
+    console.log(`Polling activo cada 5min — partido en juego, arranca pronto, o pendientes sin fecha`);
     _pollingInterval = setInterval(() => actualizarResultados(), 5 * 60 * 1000);
   } else if(minHastaProximo < Infinity) {
     // Inactive: wait until 30min before next match
