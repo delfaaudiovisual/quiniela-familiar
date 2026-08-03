@@ -863,6 +863,7 @@ async function apostarPorOtro(entityId, signo){
   save();
   await saveApuesta(JORNADA, entityId, signo, p.id);
   renderJornada();
+  comprobarTodosApostaron();
 }
 
 async function savePlenoApuesta(jornada, parejaId, golesLocal, golesVisitante){
@@ -1136,6 +1137,7 @@ async function confirmarDoble(signo){
   await saveDoble(JORNADA_ACTUAL, p.id, _dobleSel.casilla, signo);
   _dobleSel=null;
   renderJornada();
+  comprobarTodosApostaron(); // ahora sí está todo, incluido el doble: avisa a Felix
 }
 
 function renderDobleSection(p,ap){
@@ -1244,6 +1246,7 @@ function skipPareja(){
   const aInd=ptInd.pleno?(ap['pleno_'+p.id]||{}):(ap[p.id]||'');
   const indText=ptInd.pleno?(aInd.l&&aInd.v?`⭐ ${aInd.l}-${aInd.v}`:'—'):aInd;
   const comp=JJ.find(j=>j.id!==p.id&&j.p===p.p);
+  if(comp) avisarPareja(comp.id, `👫 ${p.n} te ha cedido el turno para poner la apuesta de pareja. ¡Te toca a ti!`);
   const ptIndSkip=PARTIDOS[getPos(p.id,JORNADA)-1];
   const nombreIndSkip=ptIndSkip.pleno?'Pleno al 15':(ptIndSkip.l+' — '+ptIndSkip.v);
   document.getElementById('modal-resumen').innerHTML=`
@@ -1331,6 +1334,21 @@ async function confirmarFinal(){
   const posPar=getPos(p.p,JORNADA);
   const ptInd=PARTIDOS[posInd-1];
   const ptPar=PARTIDOS[posPar-1];
+  const comp=JJ.find(j=>j.id!==p.id&&j.p===p.p);
+
+  // ¿La apuesta de pareja ya existía en la BD antes de este guardado? (para saber si avisar a la pareja)
+  let parejaYaExistia=false;
+  try{
+    const supa=getSupa();
+    if(ptPar.pleno){
+      const {data}=await supa.from('apuestas_pleno').select('id').eq('jornada',JORNADA).eq('pareja_id',p.p).maybeSingle();
+      parejaYaExistia=!!data;
+    } else {
+      const {data}=await supa.from('apuestas').select('id').eq('jornada',JORNADA).eq('jugador_id',p.p).maybeSingle();
+      parejaYaExistia=!!data;
+    }
+  }catch(e){}
+
   // Individual
   if(!ptInd.pleno && ap[p.id]) await saveApuesta(JORNADA, p.id, ap[p.id]);
   // Pareja
@@ -1345,7 +1363,15 @@ async function confirmarFinal(){
     const pk=ap['pleno_'+p.p]||{};
     if(pk.l&&pk.v) await savePlenoApuesta(JORNADA, p.p, pk.l, pk.v);
   }
+
+  // Avisar a la pareja si acabamos de poner su apuesta por primera vez
+  const parejaTieneApuestaAhora = ptPar.pleno ? !!((ap['pleno_'+p.p]||{}).l) : !!ap[p.p];
+  if(!parejaYaExistia && parejaTieneApuestaAhora && comp){
+    avisarPareja(comp.id, `👫 ${p.n} ya puso la apuesta de pareja (${ptPar.l} — ${ptPar.v}). Échale un ojo si quieres.`);
+  }
+
   S.step=3;save();renderJornada();
+  comprobarTodosApostaron();
 }
 
 // Also replace confirmarMiApuesta to show modal too
@@ -2160,7 +2186,6 @@ async function cargarClasificacion(tipo) {
   const tabs = document.getElementById('clasi-tabs');
   if (!tabs) return;
   const allTipos = [
-    { id: 'mundial', label: '🌍 Mundial' },
     { id: 'liga1', label: '⚽ Primera' },
     { id: 'liga2', label: 'Segunda' },
   ];
