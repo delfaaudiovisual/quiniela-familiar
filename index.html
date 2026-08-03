@@ -852,10 +852,12 @@ async function loadAllApuestasFromDB(){
       if(!S.apuestas[row.jornada]) S.apuestas[row.jornada] = {};
       S.apuestas[row.jornada][row.jugador_id] = row.apuesta;
       if(row.apostado_por) S.apuestas[row.jornada]['_por_'+row.jugador_id] = row.apostado_por;
+      if(PP[row.jugador_id]) S.apuestas[row.jornada]['_guardada_'+row.jugador_id] = true; // apuesta de pareja ya guardada de verdad en la BD
     });
     if(r2.data) r2.data.forEach(row => {
       if(!S.apuestas[row.jornada]) S.apuestas[row.jornada] = {};
       S.apuestas[row.jornada]['pleno_'+row.pareja_id] = {l: row.goles_local, v: row.goles_visitante};
+      if(PP[row.pareja_id]) S.apuestas[row.jornada]['_guardada_'+row.pareja_id] = true;
     });
     save();
   } catch(e){ console.error('Error loading all apuestas:', e); }
@@ -873,9 +875,11 @@ async function loadApuestasFromDB(jornada){
     if(r1.data) r1.data.forEach(row => {
       S.apuestas[jornada][row.jugador_id] = row.apuesta;
       if(row.apostado_por) S.apuestas[jornada]['_por_'+row.jugador_id] = row.apostado_por;
+      if(PP[row.jugador_id]) S.apuestas[jornada]['_guardada_'+row.jugador_id] = true;
     });
     if(r2.data) r2.data.forEach(row => {
       S.apuestas[jornada]['pleno_'+row.pareja_id] = {l: row.goles_local, v: row.goles_visitante};
+      if(PP[row.pareja_id]) S.apuestas[jornada]['_guardada_'+row.pareja_id] = true;
     });
     if(r3.data) r3.data.forEach(row => {
       S.apuestas[jornada][row.clave] = row.valor;
@@ -899,6 +903,7 @@ async function apostarPorOtro(entityId, signo){
   if(!S.apuestas[JORNADA]) S.apuestas[JORNADA]={};
   S.apuestas[JORNADA][entityId]=signo;
   S.apuestas[JORNADA]['_por_'+entityId]=p.id;
+  if(PP[entityId]) S.apuestas[JORNADA]['_guardada_'+entityId]=true;
   save();
   await saveApuesta(JORNADA, entityId, signo, p.id);
   renderJornada();
@@ -1079,14 +1084,15 @@ function renderStep2(p){
 
   const parAp=ptPar.pleno?(ap['pleno_'+p.p]||{}):(ap[p.p]||null);
   const tieneParAp=ptPar.pleno?!!(parAp.l&&parAp.v):!!parAp;
+  const parejaGuardadaEnDB=!!ap['_guardada_'+p.p]; // true solo si ya está guardada de verdad, no un simple toque sin confirmar
   const compCedio=ap['_skip_'+p.p]===comp.id;
 
   let h=topbarHtml(p);
   h+=`<div class="page" style="padding-top:8px;">`;
   h+=stepIndicatorHtml(2);
 
-  if(tieneParAp && !compCedio){
-    // Alguien ya la puso (comp o yo antes) sin que el comp cediera — bloqueada
+  if(parejaGuardadaEnDB && !compCedio){
+    // Alguien ya la guardó de verdad (comp o yo antes) sin que el comp cediera — bloqueada
     h+=`<div class="alert alert-info"><i class="ti ti-info-circle"></i><p>La apuesta de pareja ya está cubierta. Puedes confirmar.</p></div>`;
     h+=`<p class="sec-label">Pareja — ${PP[p.p].n} — posición ${posPar}</p>`;
     h+=ptPar.pleno?plenoCardHtml(posPar,p.p,true):partidoCardHtml(posPar,p.p,true,false);
@@ -1289,6 +1295,11 @@ function goStep2(){
 function skipPareja(){
   const p=jugador(S.player);
   if(!S.apuestas[JORNADA])S.apuestas[JORNADA]={};
+  // Si había un borrador sin guardar (lo tocaste y te arrepentiste), lo quitamos al ceder el turno
+  if(!S.apuestas[JORNADA]['_guardada_'+p.p]){
+    delete S.apuestas[JORNADA][p.p];
+    delete S.apuestas[JORNADA]['pleno_'+p.p];
+  }
   S.apuestas[JORNADA]['_skip_'+p.p]=p.id;
   save();
   saveEstado(JORNADA, '_skip_'+p.p, p.id);
@@ -1419,6 +1430,7 @@ async function confirmarFinal(){
 
   // Avisar a la pareja si acabamos de poner su apuesta por primera vez
   const parejaTieneApuestaAhora = ptPar.pleno ? !!((ap['pleno_'+p.p]||{}).l) : !!ap[p.p];
+  if(parejaTieneApuestaAhora) ap['_guardada_'+p.p]=true; // ya está guardada de verdad, deja de poder cederse
   if(!parejaYaExistia && parejaTieneApuestaAhora && comp){
     avisarPareja(comp.id, `👫 ${p.n} ya puso la apuesta de pareja (${ptPar.l} — ${ptPar.v}). Échale un ojo si quieres.`);
   }
@@ -1584,7 +1596,6 @@ function partidoCardHtml(pos,key,isPareja,showBloq=false){
       <p class="partido-nombre">${pt.l} — ${pt.v}${marcadorBadge}</p>
       <div style="display:flex;gap:8px;align-items:center;margin-top:10px;">
         ${opts}
-        ${ap?`<span style="font-size:11px;color:var(--text-sec);margin-left:4px;">Apostado</span>`:''}
         ${resHtml}
       </div>
     </div>
