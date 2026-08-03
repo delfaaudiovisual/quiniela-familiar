@@ -1361,6 +1361,7 @@ function renderGlobalTable(p,ap){
     const esCasillaDobleConfirmada=!pt.pleno&&dobleApActivo&&dobleApActivo.casilla===pos;
     const esCasillaDobleSeleccionando=!pt.pleno&&_dobleSel&&_dobleSel.casilla===pos;
     const esCasillaDobleElegible=!pt.pleno&&esMiTurnoDoble&&!prohibidasDoble.includes(pos)&&a&&['1','X','2'].includes(a)&&!esCasillaDobleSeleccionando;
+    const isMiDoble=esCasillaDobleConfirmada&&dobleApActivo.jugador_id===p.id; // el doble que YO puse, se resalta como mi apuesta
 
     let aBadge='';
     if(pt.pleno){
@@ -1437,11 +1438,11 @@ function renderGlobalTable(p,ap){
       ?`onclick="elegirCasillaDoble(${pos})"`
       :'';
 
-    h+=`<div class="global-row${isMe||isMePar?' me':''}" style="${isMe||isMePar||esCasillaDobleElegible?'cursor:pointer;':''}${esCasillaDobleElegible?'background:var(--purple-bg);border-radius:8px;margin:2px -8px;padding:10px 8px;':''}" ${clickFn}>
+    h+=`<div class="global-row${isMe||isMePar||isMiDoble?' me':''}" style="${isMe||isMePar||esCasillaDobleElegible?'cursor:pointer;':''}${esCasillaDobleElegible?'background:var(--purple-bg);border-radius:8px;margin:2px -8px;padding:10px 8px;':''}" ${clickFn}>
       ${av}
       <div style="flex:1;min-width:0;overflow:hidden;">
-        <p style="font-size:15px;font-weight:${isMe||isMePar?700:600};color:${isMe?'var(--blue-text)':isMePar?'var(--teal-text)':'var(--text)'};margin-bottom:3px;">
-          ${ent.n}${isMe?' 👈':''}${editing?' <span style="font-size:10px;font-weight:400;opacity:0.7;">editando...</span>':''}
+        <p style="font-size:15px;font-weight:${isMe||isMePar||isMiDoble?700:600};color:${isMe?'var(--blue-text)':isMePar?'var(--teal-text)':isMiDoble?'var(--blue-text)':'var(--text)'};margin-bottom:3px;">
+          ${ent.n}${isMe?' 👈':''}${isMiDoble?' 🎯':''}${editing?' <span style="font-size:10px;font-weight:400;opacity:0.7;">editando...</span>':''}
           ${editBtn}
         </p>
         <p style="font-size:12px;color:var(--text-sec);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${pos}. ${pt.pleno?'⭐ '+pt.l+' — '+pt.v:pt.l+' — '+pt.v}${marcadorHtml}</p>
