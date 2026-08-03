@@ -901,11 +901,13 @@ async function loadDobleFromDB(jornada){
   try {
     const supa = getSupa();
     const { data } = await supa.from('apuestas_doble').select('*').eq('jornada', jornada);
+    if(!S.apuestas[jornada]) S.apuestas[jornada]={};
     if(data && data.length){
-      if(!S.apuestas[jornada]) S.apuestas[jornada]={};
       S.apuestas[jornada].doble = {jugador_id: data[0].jugador_id, casilla: data[0].casilla, apuesta: data[0].apuesta};
-      save();
+    } else {
+      delete S.apuestas[jornada].doble;
     }
+    save();
   } catch(e){ console.error('Error loading doble:', e); }
 }
 
