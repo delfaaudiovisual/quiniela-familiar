@@ -606,6 +606,13 @@ async function solicitarVAR(mensaje) {
 }
 
 async function renderLogin(skipAutoLogin){
+  // 0. Ya hay sesión activa guardada en este dispositivo (localStorage) — entra directo,
+  // sin pasar por splash/login. Esto es lo que hace que abrir la app (o tocar una notificación)
+  // te lleve directo a tu perfil en vez de preguntarte quién eres cada vez.
+  if(S.player && jugador(S.player) && !skipAutoLogin){
+    await continuarLogin(S.player);
+    return;
+  }
   // Auto-login: try localStorage/cookie first, then push subscription
   // (se salta por completo tras un "Cambiar de perfil" explícito, para no re-loguear solo)
   if(!S.player && !skipAutoLogin){
