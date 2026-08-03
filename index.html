@@ -1067,8 +1067,8 @@ function renderStep3(p){
     <p style="font-size:11px;font-weight:600;color:var(--text-sec);text-transform:uppercase;letter-spacing:0.06em;white-space:nowrap;">Apuestas de todos</p>
     <div style="flex:1;height:0.5px;background:var(--border);"></div>
   </div>`;
+  h+=renderDobleBanner(p,ap);
   h+=renderGlobalTable(p,ap);
-  h+=renderDobleSection(p,ap);
   if(BLOQUEADO){
     h+=`<button onclick="abrirModalVAR()" class="btn btn-secondary" style="margin-top:14px;width:100%;color:var(--orange-text);"><i class="ti ti-flag"></i> Solicitar VAR</button>`;
   }
@@ -1140,57 +1140,14 @@ async function confirmarDoble(signo){
   comprobarTodosApostaron(); // ahora sí está todo, incluido el doble: avisa a Felix
 }
 
-function renderDobleSection(p,ap){
+// Aviso corto arriba de la tabla — el detalle del Doble se ve en la fila de esa casilla
+function renderDobleBanner(p,ap){
   if(JORNADA!==JORNADA_ACTUAL) return '';
   const dobleId=getJugadorDoble(JORNADA_ACTUAL);
-  const dobleAp=ap.doble;
-  if(dobleAp){
-    const orden=getOrden(JORNADA_ACTUAL);
-    const duenoId=orden[dobleAp.casilla-1];
-    const duenoNombre=jugador(duenoId)?.n||PP[duenoId]?.n||duenoId;
-    return `<div class="alert alert-purple" style="margin-top:14px;"><i class="ti ti-target-arrow"></i><p>🎯 El Doble esta jornada: <strong>${jugador(dobleId)?.n}</strong> jugó la casilla ${dobleAp.casilla} (${duenoNombre}) con <strong>${dobleAp.apuesta}</strong>.</p></div>`;
-  }
+  if(ap.doble) return '';
   if(p.id!==dobleId) return '';
   if(!todosApostadoLocal(JORNADA_ACTUAL)) return '';
-
-  if(_dobleSel){
-    const pt=PARTIDOS[_dobleSel.casilla-1];
-    const ownerNombre=jugador(_dobleSel.ownerId)?.n||PP[_dobleSel.ownerId]?.n||_dobleSel.ownerId;
-    const opciones=signoContrario(_dobleSel.ownerApuesta);
-    return `<div class="card" style="margin-top:14px;">
-      <p style="font-size:15px;font-weight:700;margin-bottom:4px;">🎯 Confirmar el Doble</p>
-      <p style="font-size:12px;color:var(--text-sec);margin-bottom:10px;">Casilla ${_dobleSel.casilla}: ${pt.l} - ${pt.v} · ${ownerNombre} apostó <strong>${_dobleSel.ownerApuesta}</strong>. Elige el signo contrario:</p>
-      <div class="ap-row" style="justify-content:center;margin-bottom:10px;">
-        ${opciones.map(s=>`<button class="ap-btn ap-${s.toLowerCase()}" onclick="confirmarDoble('${s}')">${s}</button>`).join('')}
-      </div>
-      <button onclick="cancelarDoble()" class="btn-ghost" style="width:100%;text-align:center;">Cancelar</button>
-    </div>`;
-  }
-
-  const prohibidas=casillasProhibidasDoble(p.id,JORNADA_ACTUAL);
-  const orden=getOrden(JORNADA_ACTUAL);
-  let opciones='';
-  for(let pos=1; pos<=14; pos++){
-    if(prohibidas.includes(pos)) continue;
-    const ownerId=orden[pos-1];
-    const ownerAp=ap[ownerId];
-    if(!ownerAp || !['1','X','2'].includes(ownerAp)) continue;
-    const ownerNombre=jugador(ownerId)?.n||PP[ownerId]?.n||ownerId;
-    const pt=PARTIDOS[pos-1];
-    opciones+=`<div class="global-row" style="cursor:pointer;" onclick="elegirCasillaDoble(${pos})">
-      <span style="width:22px;text-align:center;font-size:12px;color:var(--text-ter);">${pos}</span>
-      <div style="flex:1;">
-        <p style="font-size:13px;font-weight:600;">${pt.l} - ${pt.v}</p>
-        <p style="font-size:11px;color:var(--text-sec);">${ownerNombre} apostó ${ownerAp}</p>
-      </div>
-      <i class="ti ti-chevron-right" style="color:var(--text-ter);"></i>
-    </div>`;
-  }
-  return `<div class="card" style="margin-top:14px;">
-    <p style="font-size:15px;font-weight:700;margin-bottom:4px;">🎯 Te toca poner el Doble</p>
-    <p style="font-size:12px;color:var(--text-sec);margin-bottom:10px;">Todos han apostado. Elige una casilla y pon el signo contrario al que apostó su dueño.</p>
-    ${opciones||'<p style="font-size:13px;color:var(--text-ter);text-align:center;padding:12px;">No hay casillas disponibles todavía.</p>'}
-  </div>`;
+  return `<div class="alert alert-purple" style="margin-bottom:10px;"><i class="ti ti-target-arrow"></i><p>🎯 Todos han apostado. Toca la casilla marcada para poner el Doble (signo contrario al del dueño).</p></div>`;
 }
 
 function topbarHtml(p, showSalir=false){
@@ -1383,6 +1340,13 @@ function renderGlobalTable(p,ap){
   const all=[...JJ.map(j=>({id:j.id,n:j.n,c:j.c,ct:j.ct,isP:false})),...Object.values(PP).map(par=>({id:par.id,n:par.n,c:'#F1EFE8',ct:'#444441',isP:true}))];
   // Ordenar por número de partido (posición en la jornada)
   all.sort((a,b)=>getPos(a.id,JORNADA)-getPos(b.id,JORNADA));
+
+  // Estado de El Doble, para pintarlo inline en la fila de la casilla correspondiente
+  const dobleIdActivo = JORNADA===JORNADA_ACTUAL ? getJugadorDoble(JORNADA) : null;
+  const dobleApActivo = JORNADA===JORNADA_ACTUAL ? ap.doble : null;
+  const esMiTurnoDoble = JORNADA===JORNADA_ACTUAL && p.id===dobleIdActivo && !dobleApActivo && todosApostadoLocal(JORNADA_ACTUAL);
+  const prohibidasDoble = esMiTurnoDoble ? casillasProhibidasDoble(p.id,JORNADA_ACTUAL) : [];
+
   let h=`<div class="card-flush" style="padding:0 14px;">`;
   all.forEach(ent=>{
     const pos=getPos(ent.id,JORNADA);
@@ -1392,6 +1356,9 @@ function renderGlobalTable(p,ap){
     const isMePar=ent.id===p.p;
     const canEdit=!BLOQUEADO&&(isMe||isMePar);
     const editing=false;
+    const esCasillaDobleConfirmada=!pt.pleno&&dobleApActivo&&dobleApActivo.casilla===pos;
+    const esCasillaDobleSeleccionando=!pt.pleno&&_dobleSel&&_dobleSel.casilla===pos;
+    const esCasillaDobleElegible=!pt.pleno&&esMiTurnoDoble&&!prohibidasDoble.includes(pos)&&a&&['1','X','2'].includes(a)&&!esCasillaDobleSeleccionando;
 
     let aBadge='';
     if(pt.pleno){
@@ -1410,6 +1377,12 @@ function renderGlobalTable(p,ap){
       } else {
         aBadge=`<span style="display:inline-flex;align-items:center;justify-content:center;height:30px;width:44px;font-size:16px;color:var(--text-ter);flex-shrink:0;margin-left:auto;">—</span>`;
       }
+    } else if(esCasillaDobleSeleccionando){
+      const opciones=signoContrario(_dobleSel.ownerApuesta);
+      aBadge=`<div style="display:flex;align-items:center;gap:4px;flex-shrink:0;margin-left:auto;" onclick="event.stopPropagation()">
+        ${opciones.map(s=>`<button class="ap-btn ap-${s.toLowerCase()}" style="height:30px;min-width:30px;font-size:12px;" onclick="confirmarDoble('${s}')">${s}</button>`).join('')}
+        <button onclick="cancelarDoble()" style="background:none;border:none;color:var(--text-ter);font-size:16px;cursor:pointer;padding:0 2px;line-height:1;">×</button>
+      </div>`;
     } else {
       if(a){
         let bg='#e8e8ed', color='#1a1a1a', border='#c7c7cc';
@@ -1421,7 +1394,14 @@ function renderGlobalTable(p,ap){
         }
         const porOtro=ap['_por_'+ent.id];
         const porOtroTag=porOtro?`<p style="font-size:9px;color:var(--text-ter);text-align:right;margin-top:2px;">por ${jugador(porOtro)?.n||porOtro}</p>`:'';
-        aBadge=`<div style="text-align:right;flex-shrink:0;margin-left:auto;"><span style="display:inline-flex;align-items:center;justify-content:center;height:30px;width:44px;font-size:14px;font-weight:800;border-radius:6px;background:${bg};color:${color};border:1.5px solid ${border};">${a}</span>${porOtroTag}</div>`;
+        const dobleTag=esCasillaDobleConfirmada
+          ?`<p style="font-size:9px;color:var(--purple-text);font-weight:700;text-align:right;margin-top:2px;">🎯 ${dobleApActivo.apuesta} (${jugador(dobleApActivo.jugador_id)?.n||dobleApActivo.jugador_id})</p>`
+          :'';
+        const dobleIcon=esCasillaDobleElegible?`<span style="font-size:15px;flex-shrink:0;">🎯</span>`:'';
+        aBadge=`<div style="display:flex;align-items:center;gap:6px;flex-shrink:0;margin-left:auto;">
+          <div style="text-align:right;"><span style="display:inline-flex;align-items:center;justify-content:center;height:30px;width:44px;font-size:14px;font-weight:800;border-radius:6px;background:${bg};color:${color};border:1.5px solid ${border};">${a}</span>${porOtroTag}${dobleTag}</div>
+          ${dobleIcon}
+        </div>`;
       } else if(BLOQUEADO && !isMe && !isMePar){
         aBadge = _porOtroSel===ent.id
           ? `<div style="display:flex;gap:4px;flex-shrink:0;margin-left:auto;" onclick="event.stopPropagation()">
@@ -1451,9 +1431,11 @@ function renderGlobalTable(p,ap){
 
     const clickFn=canEdit&&!editing&&!BLOQUEADO
       ?`onclick="S.step=${isMe?1:2};renderJornada();"`
+      :esCasillaDobleElegible
+      ?`onclick="elegirCasillaDoble(${pos})"`
       :'';
 
-    h+=`<div class="global-row${isMe||isMePar?' me':''}" style="${isMe||isMePar?'cursor:pointer;':''}" ${clickFn}>
+    h+=`<div class="global-row${isMe||isMePar?' me':''}" style="${isMe||isMePar||esCasillaDobleElegible?'cursor:pointer;':''}${esCasillaDobleElegible?'background:var(--purple-bg);border-radius:8px;margin:2px -8px;padding:10px 8px;':''}" ${clickFn}>
       ${av}
       <div style="flex:1;min-width:0;overflow:hidden;">
         <p style="font-size:15px;font-weight:${isMe||isMePar?700:600};color:${isMe?'var(--blue-text)':isMePar?'var(--teal-text)':'var(--text)'};margin-bottom:3px;">
