@@ -175,6 +175,12 @@
   <div class="page" style="padding-top:8px;" id="login-list"></div>
 </div>
 
+<!-- FOTO OBLIGATORIA -->
+<div id="s-foto-obligatoria" class="screen">
+  <div class="safe-top"></div>
+  <div class="page" style="padding-top:40px;text-align:center;" id="foto-obligatoria-content"></div>
+</div>
+
 <!-- MAIN -->
 <div id="s-main" class="screen" style="padding-bottom:0;">
   <div id="tab-jornada" style="display:flex;flex-direction:column;flex:1;"></div>
@@ -387,6 +393,10 @@ function textoBloqueo(){
 // ============ STATE ============
 let S={player:null,apuestas:{},step:1}; // step: 1=individual, 2=pareja, 3=global
 try{const ss=localStorage.getItem('qff_v5');if(ss)S={...S,...JSON.parse(ss)};}catch(e){}
+
+// Foto de perfil obligatoria al elegir jugador — activar tras el test de la jornada 76
+const FOTO_OBLIGATORIA = false;
+const fotosPersonalizadas = new Set(); // jugador_id con foto propia subida (perfiles.foto)
 
 function preloadDemo(){}
 
@@ -915,6 +925,15 @@ async function login(pid){
   S.player=pid;save();
   setCookie('qff_player', pid);
   document.getElementById('login-list').innerHTML='<div style="text-align:center;padding:40px;color:var(--text-sec);"><i class="ti ti-loader" style="font-size:32px;animation:spin 1s linear infinite;"></i><p style="margin-top:12px;font-size:14px;">Cargando...</p></div>';
+  await cargarPerfiles(); // asegura que fotosPersonalizadas esté al día (login por cookie/push no pasa por renderLogin)
+  if(FOTO_OBLIGATORIA && !fotosPersonalizadas.has(pid)){
+    renderFotoObligatoria(pid);
+    return;
+  }
+  await continuarLogin(pid);
+}
+
+async function continuarLogin(pid){
   // Load partidos first (updates JORNADA_ACTUAL), then load apuestas for correct jornada
   await cargarJornadaLoterías();
   await loadAllApuestasFromDB();
@@ -924,6 +943,51 @@ async function login(pid){
   // Registrar notificaciones en segundo plano
   registrarNotificaciones(pid);
   navTo('jornada');
+}
+
+function renderFotoObligatoria(pid){
+  const p=jugador(pid);
+  if(!p){ continuarLogin(pid); return; }
+  document.getElementById('foto-obligatoria-content').innerHTML=`
+    <div class="splash-icon" style="background:var(--blue-bg);">${avHtml(p,80)}</div>
+    <h2 style="font-size:20px;font-weight:700;color:var(--text);margin-bottom:8px;">¡Hola, ${p.n}!</h2>
+    <p style="font-size:14px;color:var(--text-sec);line-height:1.5;margin-bottom:20px;max-width:320px;margin-left:auto;margin-right:auto;">Antes de entrar, sube tu foto de perfil — así confirmamos que todos os habéis bajado la app.</p>
+    <input type="file" id="foto-obligatoria-input" accept="image/*" style="display:none;" onchange="subirFotoObligatoria(this,'${pid}')">
+    <button class="btn btn-primary" style="max-width:280px;margin:0 auto;" onclick="document.getElementById('foto-obligatoria-input').click()"><i class="ti ti-camera"></i> Subir mi foto</button>
+    <button class="btn-ghost" style="display:block;margin:14px auto 0;" onclick="logout()">Cambiar de perfil</button>
+  `;
+  goTo('s-foto-obligatoria');
+}
+
+async function subirFotoObligatoria(input, pid){
+  const file = input.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = new Image();
+    img.onload = async () => {
+      const canvas = document.createElement('canvas');
+      const size = 120;
+      canvas.width = size; canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      const min = Math.min(img.width, img.height);
+      const sx = (img.width - min) / 2, sy = (img.height - min) / 2;
+      ctx.drawImage(img, sx, sy, min, min, 0, 0, size, size);
+      const base64 = canvas.toDataURL('image/jpeg', 0.8);
+      try {
+        const supa = getSupa();
+        await supa.from('perfiles').upsert({ jugador_id: pid, foto: base64 });
+        AVATARS[pid] = base64;
+        fotosPersonalizadas.add(pid);
+        await continuarLogin(pid);
+      } catch(e) {
+        console.error('Error subiendo foto:', e);
+        alert('Error al guardar la foto, inténtalo de nuevo.');
+      }
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
 }
 function resetCache(){
   if(!confirm('¿Limpiar caché local? Solo borra datos en este dispositivo, no afecta a las apuestas guardadas.')) return;
@@ -2123,7 +2187,7 @@ async function cargarPerfiles(){
     const { data } = await supa.from('perfiles').select('*');
     if(data) {
       data.forEach(row => {
-        if(row.foto) AVATARS[row.jugador_id] = row.foto;
+        if(row.foto) { AVATARS[row.jugador_id] = row.foto; fotosPersonalizadas.add(row.jugador_id); }
         if(row.nombre) {
           const jj = JJ.find(j => j.id === row.jugador_id);
           if(jj) jj.n = row.nombre;
