@@ -605,9 +605,10 @@ async function solicitarVAR(mensaje) {
   }
 }
 
-async function renderLogin(){
+async function renderLogin(skipAutoLogin){
   // Auto-login: try localStorage/cookie first, then push subscription
-  if(!S.player){
+  // (se salta por completo tras un "Cambiar de perfil" explícito, para no re-loguear solo)
+  if(!S.player && !skipAutoLogin){
     // 1. Try cookie
     const cookiePlayer = getCookie('qff_player');
     if(cookiePlayer && jugador(cookiePlayer)){
@@ -848,17 +849,22 @@ async function loadAllApuestasFromDB(){
       supa.from('apuestas').select('*'),
       supa.from('apuestas_pleno').select('*'),
     ]);
+    // Reemplaza por completo (no solo añade) — así se limpian jornadas viejas que ya no
+    // existen en la BD (ej. las del Mundial, borradas en el reset de temporada) pero que
+    // se hubieran quedado cacheadas en el localStorage de algún dispositivo.
+    const nuevo = {};
     if(r1.data) r1.data.forEach(row => {
-      if(!S.apuestas[row.jornada]) S.apuestas[row.jornada] = {};
-      S.apuestas[row.jornada][row.jugador_id] = row.apuesta;
-      if(row.apostado_por) S.apuestas[row.jornada]['_por_'+row.jugador_id] = row.apostado_por;
-      if(PP[row.jugador_id]) S.apuestas[row.jornada]['_guardada_'+row.jugador_id] = true; // apuesta de pareja ya guardada de verdad en la BD
+      if(!nuevo[row.jornada]) nuevo[row.jornada] = {};
+      nuevo[row.jornada][row.jugador_id] = row.apuesta;
+      if(row.apostado_por) nuevo[row.jornada]['_por_'+row.jugador_id] = row.apostado_por;
+      if(PP[row.jugador_id]) nuevo[row.jornada]['_guardada_'+row.jugador_id] = true; // apuesta de pareja ya guardada de verdad en la BD
     });
     if(r2.data) r2.data.forEach(row => {
-      if(!S.apuestas[row.jornada]) S.apuestas[row.jornada] = {};
-      S.apuestas[row.jornada]['pleno_'+row.pareja_id] = {l: row.goles_local, v: row.goles_visitante};
-      if(PP[row.pareja_id]) S.apuestas[row.jornada]['_guardada_'+row.pareja_id] = true;
+      if(!nuevo[row.jornada]) nuevo[row.jornada] = {};
+      nuevo[row.jornada]['pleno_'+row.pareja_id] = {l: row.goles_local, v: row.goles_visitante};
+      if(PP[row.pareja_id]) nuevo[row.jornada]['_guardada_'+row.pareja_id] = true;
     });
+    S.apuestas = nuevo;
     save();
   } catch(e){ console.error('Error loading all apuestas:', e); }
 }
@@ -1030,7 +1036,7 @@ function resetCache(){
   location.reload();
 }
 
-function logout(){S.player=null;save();setCookie('qff_player','',0);/* qff_last_player se conserva para el "¿Eres X?" */renderLogin();goTo('s-login');}
+function logout(){S.player=null;save();setCookie('qff_player','',0);/* qff_last_player se conserva para el "¿Eres X?" */renderLogin(true);goTo('s-login');}
 
 // ============ JORNADA ============
 function renderJornada(){
