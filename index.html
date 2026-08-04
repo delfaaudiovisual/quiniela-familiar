@@ -629,8 +629,11 @@ async function renderLogin(skipAutoLogin){
 
   const lastId = getCookie('qff_last_player');
   if(lastId && jugador(lastId)){
+    // Ya se ha usado la app antes en este dispositivo — saltar la splash y preguntar directamente
     renderLoginQuickReturn(lastId);
+    goTo('s-login');
   } else {
+    // Primera vez que se usa la app aquí — se queda en la splash hasta que toquen "Entrar"
     renderLoginGrid();
   }
 }
@@ -958,6 +961,7 @@ async function login(pid){
 }
 
 async function continuarLogin(pid){
+  await cargarPerfiles(); // fotos/nombres personalizados — si no, se quedan en el avatar gris por defecto
   // Load partidos first (updates JORNADA_ACTUAL), then load apuestas for correct jornada
   await cargarJornadaLoterías();
   await loadAllApuestasFromDB();
