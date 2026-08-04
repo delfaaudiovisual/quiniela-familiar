@@ -961,6 +961,11 @@ async function login(pid){
 }
 
 async function continuarLogin(pid){
+  // Mostrar ya la app (con un "cargando" dentro) en vez de quedarnos en la pantalla anterior
+  // mientras esperamos las llamadas de red — así no se ve un parpadeo de la pantalla de login.
+  goTo('s-main');
+  document.getElementById('tab-jornada').innerHTML='<div style="text-align:center;padding:80px 20px;"><i class="ti ti-loader" style="font-size:32px;color:var(--text-sec);animation:spin 1s linear infinite;"></i><p style="margin-top:12px;font-size:14px;color:var(--text-sec);">Cargando...</p></div>';
+
   await cargarPerfiles(); // fotos/nombres personalizados — si no, se quedan en el avatar gris por defecto
   // Load partidos first (updates JORNADA_ACTUAL), then load apuestas for correct jornada
   await cargarJornadaLoterías();
