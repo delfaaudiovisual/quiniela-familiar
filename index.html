@@ -1542,9 +1542,12 @@ function renderGlobalTable(p,ap){
         }
         const porOtro=ap['_por_'+ent.id];
         const porOtroTag=porOtro?`<p style="font-size:9px;color:var(--text-ter);text-align:right;margin-top:2px;">por ${jugador(porOtro)?.n||porOtro}</p>`:'';
-        const dobleTag=esCasillaDobleConfirmada
-          ?`<p style="font-size:9px;color:var(--purple-text);font-weight:700;text-align:right;margin-top:2px;">🎯 ${dobleApActivo.apuesta} (${jugador(dobleApActivo.jugador_id)?.n||dobleApActivo.jugador_id})</p>`
-          :'';
+        let dobleTag='';
+        if(esCasillaDobleConfirmada){
+          let dobleColor='var(--purple-text)'; // aún sin resultado
+          if(pt.c&&pt.r) dobleColor=dobleApActivo.apuesta===pt.r?'var(--green-text)':'var(--red-text)';
+          dobleTag=`<p style="font-size:9px;color:${dobleColor};font-weight:700;text-align:right;margin-top:2px;">🎯 ${dobleApActivo.apuesta} (${jugador(dobleApActivo.jugador_id)?.n||dobleApActivo.jugador_id})</p>`;
+        }
         const dobleIcon=esCasillaDobleElegible?`<span style="font-size:15px;flex-shrink:0;">🎯</span>`:'';
         aBadge=`<div style="display:flex;align-items:center;gap:6px;flex-shrink:0;margin-left:auto;">
           <div style="text-align:right;"><span style="display:inline-flex;align-items:center;justify-content:center;height:30px;width:44px;font-size:14px;font-weight:800;border-radius:6px;background:${bg};color:${color};border:1.5px solid ${border};">${a}</span>${porOtroTag}${dobleTag}</div>
