@@ -351,6 +351,13 @@ function calcularBloqueado(){
   return false;
 }
 let BLOQUEADO = calcularBloqueado();
+// Resultados en firme = los 14 partidos regulares de la jornada ya tienen resultado confirmado.
+// Se usa para no dejar pedir VAR hasta que haya algo que revisar de verdad.
+function resultadosEnFirme(partidos){
+  if(!partidos || !partidos.length) return false;
+  const regulares = partidos.slice(0,14);
+  return regulares.length>0 && regulares.every(pt=>pt && pt.c===true);
+}
 
 // Texto del countdown para mostrar cuánto queda
 function textoBloqueo(){
@@ -563,7 +570,8 @@ async function avisarPareja(jugadorId, mensaje) {
   }
 }
 
-async function solicitarVAR(mensaje) {
+async function solicitarVAR(mensaje, jornada) {
+  const j = jornada!=null ? jornada : JORNADA_ACTUAL;
   try {
     await fetch(`${SUPA_FUNCTIONS_URL}/quick-task`, {
       method: 'POST',
@@ -574,7 +582,7 @@ async function solicitarVAR(mensaje) {
       body: JSON.stringify({
         tipo: 'var_solicitado',
         jugador_id: 'felix',
-        datos: { mensaje: `🟡 VAR solicitado por ${jugador(S.player)?.n||S.player}: ${mensaje}` }
+        datos: { mensaje: `🟡 VAR solicitado por ${jugador(S.player)?.n||S.player} (Jornada ${j}): ${mensaje}` }
       })
     });
   } catch(e) {
@@ -1170,15 +1178,17 @@ function renderStep3(p){
   </div>`;
   h+=renderDobleBanner(p,ap);
   h+=renderGlobalTable(p,ap);
-  if(BLOQUEADO){
-    h+=`<button onclick="abrirModalVAR()" class="btn btn-secondary" style="margin-top:14px;width:100%;color:var(--orange-text);"><i class="ti ti-flag"></i> Solicitar VAR</button>`;
+  if(resultadosEnFirme(PARTIDOS)){
+    h+=`<button onclick="abrirModalVAR(JORNADA)" class="btn btn-secondary" style="margin-top:14px;width:100%;color:var(--orange-text);"><i class="ti ti-flag"></i> Solicitar VAR</button>`;
   }
   h+=`</div>`;
   document.getElementById('tab-jornada').innerHTML=h;
 }
 
 // ---- VAR ----
-function abrirModalVAR(){
+let _varJornada=null;
+function abrirModalVAR(jornada){
+  _varJornada = jornada!=null ? jornada : JORNADA_ACTUAL;
   let modal=document.getElementById('modal-var');
   if(!modal){
     modal=document.createElement('div');
@@ -1188,7 +1198,7 @@ function abrirModalVAR(){
     document.body.appendChild(modal);
   }
   modal.innerHTML=`<div class="modal-sheet">
-    <p style="font-size:16px;font-weight:700;margin-bottom:4px;">🟡 Solicitar VAR</p>
+    <p style="font-size:16px;font-weight:700;margin-bottom:4px;">🟡 Solicitar VAR — Jornada ${_varJornada}</p>
     <p style="font-size:13px;color:var(--text-sec);margin-bottom:12px;">Cuenta qué quieres revisar. Se avisará a Felix.</p>
     <textarea id="var-texto" rows="3" style="width:100%;padding:11px 14px;border:0.5px solid var(--border);border-radius:8px;font-size:15px;font-family:inherit;resize:vertical;margin-bottom:12px;background:var(--card);color:var(--text);" placeholder="Ej: revisar el resultado del partido 4..."></textarea>
     <button class="btn btn-primary" onclick="enviarVAR()"><i class="ti ti-send"></i> Enviar</button>
@@ -1203,7 +1213,7 @@ function cerrarModalVAR(){
 async function enviarVAR(){
   const txt=(document.getElementById('var-texto').value||'').trim();
   if(!txt){ alert('Escribe un mensaje.'); return; }
-  await solicitarVAR(txt);
+  await solicitarVAR(txt, _varJornada);
   cerrarModalVAR();
   alert('VAR solicitado. Se ha avisado a Felix.');
 }
@@ -1291,7 +1301,7 @@ function normasCardsHtml(){
       <div class="help-step"><div class="step-num">•</div><div><p style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:3px;">Tu partido de pareja</p><p style="font-size:13px;color:var(--text-sec);line-height:1.5;">Acertar el signo: <strong>+0,5 puntos</strong> para cada uno.</p></div></div>
       <div class="help-step"><div class="step-num">•</div><div><p style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:3px;">Pleno al 15 — individual</p><p style="font-size:13px;color:var(--text-sec);line-height:1.5;">Signo correcto: <strong>+1</strong>. Si además el tramo de goles es exacto en los dos equipos: <strong>+1,5 extra</strong> (2,5 en total).</p></div></div>
       <div class="help-step"><div class="step-num">•</div><div><p style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:3px;">Pleno al 15 — pareja</p><p style="font-size:13px;color:var(--text-sec);line-height:1.5;">Signo correcto: <strong>+0,5</strong>. Si además el tramo es exacto: <strong>+0,5 extra</strong> (1 en total).</p></div></div>
-      <div class="help-step"><div class="step-num">•</div><div><p style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:3px;">El Doble</p><p style="font-size:13px;color:var(--text-sec);line-height:1.5;">Si acierta quien lo pone: <strong>+1</strong>. Si falla: <strong>−0,5</strong>. Si acierta, el dueño de la casilla también suma <strong>+0,5 extra</strong> de regalo.</p></div></div>
+      <div class="help-step"><div class="step-num">•</div><div><p style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:3px;">El Doble</p><p style="font-size:13px;color:var(--text-sec);line-height:1.5;">Solo puntúa quien lo pone: <strong>+1</strong> si acierta su signo (el contrario al del dueño), <strong>−0,5</strong> si falla. El dueño de la casilla no gana ni pierde nada extra por el Doble — solo su punto normal si acierta su propia apuesta.</p></div></div>
     </div>`;
 }
 
@@ -1755,7 +1765,6 @@ function calcPuntos(j){
   let pts={};
   // Use historical partidos for past jornadas, current PARTIDOS for current jornada
   const partidosJ = j===JORNADA_ACTUAL ? PARTIDOS : (S.partidosHistorico?.[j] || PARTIDOS);
-  const orden=getOrden(j);
   JJ.forEach(p=>{pts[p.id]=0;});
   JJ.forEach(p=>{
     let n=0;
@@ -1780,7 +1789,9 @@ function calcPuntos(j){
     pts[p.id]=n;
   });
 
-  // El Doble
+  // El Doble — solo puntúa quien lo pone (+1 si acierta su signo contrario, -0,5 si no).
+  // El dueño de la casilla no recibe nada extra: solo su punto normal si acierta su propia apuesta,
+  // ya calculado arriba como parte de su apuesta individual/pareja de siempre.
   const dobleAp=ap.doble;
   if(dobleAp && dobleAp.casilla>=1 && dobleAp.casilla<=14){
     const pt=partidosJ[dobleAp.casilla-1];
@@ -1788,15 +1799,6 @@ function calcPuntos(j){
       const dobleAcierta=dobleAp.apuesta===pt.r;
       if(pts[dobleAp.jugador_id]!==undefined){
         pts[dobleAp.jugador_id]+= dobleAcierta?1:-0.5;
-      }
-      const duenoId=orden[dobleAp.casilla-1];
-      if(dobleAcierta){
-        const dueno=PP[duenoId];
-        if(dueno){
-          dueno.m.forEach(mId=>{ if(pts[mId]!==undefined) pts[mId]+=0.5; });
-        } else if(pts[duenoId]!==undefined){
-          pts[duenoId]+=0.5;
-        }
       }
     }
   }
@@ -2082,6 +2084,8 @@ function renderYo(){
     };
     const resBadge=()=>'';
 
+    const varDisponible = j!==JORNADA_ACTUAL || resultadosEnFirme(PARTIDOS);
+
     h+=`<div class="card" style="margin-bottom:8px;">
       <p style="font-size:12px;font-weight:600;color:var(--text-sec);margin-bottom:10px;">Jornada ${j}</p>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
@@ -2096,6 +2100,7 @@ function renderYo(){
           <div style="display:flex;align-items:center;">${apBadge(aPar,ptPar,ptPar?.pleno)}</div>
         </div>
       </div>
+      ${varDisponible?`<button onclick="abrirModalVAR(${j})" class="btn-ghost" style="width:100%;text-align:center;margin-top:10px;font-size:12px;color:var(--orange-text);"><i class="ti ti-flag"></i> Solicitar VAR de esta jornada</button>`:''}
     </div>`;
   }
 
