@@ -1,0 +1,5 @@
+# Local Netlify folder
+.netlify
+
+# Supabase Edge Functions se despliegan aparte vía Supabase CLI, no van en este repo (Netlify)
+supabase/
