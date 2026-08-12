@@ -177,7 +177,7 @@
   <div id="tab-normas" style="display:none;flex-direction:column;flex:1;"></div>
   <div id="tab-yo" style="display:none;flex-direction:column;flex:1;"></div>
   <nav class="nav">
-    <button class="nav-btn active" id="nb-jornada" onclick="navTo('jornada')"><i class="ti ti-calendar"></i>Jornada</button>
+    <button class="nav-btn active" id="nb-jornada" onclick="navTo('jornada')"><i class="ti ti-calendar"></i>Apuestas</button>
     <button class="nav-btn" id="nb-ranking" onclick="navTo('ranking')"><i class="ti ti-trophy"></i>Ranking</button>
     <button class="nav-btn" id="nb-normas" onclick="navTo('normas')"><i class="ti ti-book"></i>Normas</button>
     <button class="nav-btn" id="nb-yo" onclick="navTo('yo')"><i class="ti ti-user"></i>Yo</button>
@@ -2108,6 +2108,8 @@ function renderYo(){
 
   if(p.id==='felix') h+=renderResumenFelix();
 
+  h+=notifBotonHtml();
+
   h+=`<button class="btn btn-secondary" onclick="logout()" style="margin-top:8px;">
     <i class="ti ti-logout"></i>Cambiar de perfil
   </button>
@@ -2116,6 +2118,30 @@ function renderYo(){
   </button></div>`;
 
   document.getElementById('tab-yo').innerHTML=h;
+}
+
+// ---- Activar notificaciones desde Yo (por si no se aceptaron al entrar la primera vez) ----
+function notifBotonHtml(){
+  if(!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) return '';
+  const perm = Notification.permission;
+  if(perm==='granted'){
+    return `<div class="alert alert-success" style="margin-top:8px;"><i class="ti ti-bell"></i><p>Notificaciones activadas en este dispositivo.</p></div>`;
+  }
+  if(perm==='denied'){
+    return `<div class="alert alert-warn" style="margin-top:8px;"><i class="ti ti-bell-off"></i><p>Tienes las notificaciones bloqueadas para esta app. Actívalas desde los ajustes de notificaciones del navegador/móvil para poder recibir avisos.</p></div>`;
+  }
+  return `<button class="btn btn-secondary" onclick="activarNotificacionesDesdeYo()" style="margin-top:8px;">
+    <i class="ti ti-bell"></i> Activar notificaciones
+  </button>`;
+}
+async function activarNotificacionesDesdeYo(){
+  await registrarNotificaciones(S.player);
+  if(Notification.permission==='granted'){
+    alert('¡Notificaciones activadas!');
+  } else if(Notification.permission==='denied'){
+    alert('No se han activado. Actívalas desde los ajustes de notificaciones del navegador/móvil para esta app.');
+  }
+  renderYo();
 }
 
 // ---- FELIX ADMIN: resumen de jornada ----
