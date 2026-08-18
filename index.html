@@ -1901,13 +1901,16 @@ function renderRanking(){
 // ============ HISTORICO ============
 async function cargarHistoricoYRenderizar(playerId){
   if(!S.partidosHistorico) S.partidosHistorico = {};
+  if(!S.partidosHistoricoCerrado) S.partidosHistoricoCerrado = {};
   const p = jugador(playerId);
   if(!p) return;
 
-  // Get all jornadas with apuestas that we haven't loaded yet
+  // Get all jornadas with apuestas que aún no están cerradas del todo — si un partido
+  // sigue suspendido/sin jugar, seguimos refrescando esa jornada en cada carga en vez de
+  // quedarnos con una foto vieja (evita cachear un partido suspendido con datos incompletos)
   const jornadasSinCargar = Object.keys(S.apuestas)
     .map(Number)
-    .filter(j => j !== JORNADA_ACTUAL && !S.partidosHistorico[j] && (S.apuestas[j][p.id] || S.apuestas[j][p.p]));
+    .filter(j => j !== JORNADA_ACTUAL && !S.partidosHistoricoCerrado[j] && (S.apuestas[j][p.id] || S.apuestas[j][p.p]));
 
   if(jornadasSinCargar.length === 0){ renderYo(); return; }
 
@@ -1928,11 +1931,17 @@ async function cargarHistoricoYRenderizar(playerId){
       });
       if(res.ok){
         const data = await res.json();
-        if(data.partidos) S.partidosHistorico[j] = data.partidos;
+        if(data.partidos && data.partidos.length >= 14){
+          S.partidosHistorico[j] = data.partidos;
+          // Solo se marca como cerrada (y se deja de refrescar) cuando TODOS los partidos
+          // tienen resultado — así un partido suspendido no congela una foto incompleta.
+          if(data.partidos.every(pt => pt.c)) S.partidosHistoricoCerrado[j] = true;
+        }
       }
     } catch(e){ console.warn('Error cargando jornada', j, e); }
   }
 
+  save();
   renderYo();
 }
 
@@ -2457,9 +2466,12 @@ function renderClasificacion(tipo, data) {
 // ============ HISTORICO AUTOMATICO ============
 async function cargarHistoricoAutomatico(){
   if(!S.partidosHistorico) S.partidosHistorico = {};
-  // Load all past jornadas that have apuestas but no partidos cached
+  if(!S.partidosHistoricoCerrado) S.partidosHistoricoCerrado = {};
+  // Load all past jornadas que tengan apuestas y aún no estén cerradas del todo — si un
+  // partido sigue suspendido/sin jugar, se sigue refrescando esa jornada en cada carga en
+  // vez de quedarnos con una foto vieja/incompleta cacheada para siempre.
   const jornadasConApuestas = Object.keys(S.apuestas).map(Number)
-    .filter(j => j < JORNADA_ACTUAL && !S.partidosHistorico[j]);
+    .filter(j => j < JORNADA_ACTUAL && !S.partidosHistoricoCerrado[j]);
 
   if(jornadasConApuestas.length === 0) return;
 
@@ -2472,12 +2484,16 @@ async function cargarHistoricoAutomatico(){
       });
       if(res.ok){
         const data = await res.json();
-        if(data.partidos && data.partidos.length >= 13){
+        if(data.partidos && data.partidos.length >= 14){
           S.partidosHistorico[j] = data.partidos;
+          // Solo se marca como cerrada (y se deja de refrescar) cuando TODOS los partidos
+          // tienen resultado — así un partido suspendido no congela una foto incompleta.
+          if(data.partidos.every(pt => pt.c)) S.partidosHistoricoCerrado[j] = true;
         }
       }
     } catch(e){ console.warn('Error cargando historico jornada', j, e); }
   }
+  save();
   // Re-render ranking and Yo with updated data
   renderRanking();
   if(document.getElementById('tab-yo')?.children.length > 0) renderYo();
@@ -2485,7 +2501,7 @@ async function cargarHistoricoAutomatico(){
 
 // ============ INIT ============
 // Cache version — bump this to force clear localStorage on all devices
-const APP_VERSION = '2026-08-15'; // reset temporada 26/27 LaLiga
+const APP_VERSION = '2026-08-18'; // limpiar cache de historico de jornada 1 (partido suspendido cacheado con datos incompletos)
 const storedVersion = localStorage.getItem('app_version');
 if (storedVersion !== APP_VERSION) {
   // New version — clear stale cache but keep player preference
