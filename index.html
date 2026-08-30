@@ -378,7 +378,7 @@ function textoBloqueo(){
 }
 
 // ============ STATE ============
-let S={player:null,apuestas:{},step:1}; // step: 1=individual, 2=pareja, 3=global
+let S={player:null,apuestas:{},step:1,rotacionPorJornada:{}}; // step: 1=individual, 2=pareja, 3=global
 try{const ss=localStorage.getItem('qff_v5');if(ss)S={...S,...JSON.parse(ss)};}catch(e){}
 
 // Foto de perfil obligatoria al elegir jugador — activar tras el test de la jornada 76
@@ -402,7 +402,15 @@ function getCookie(name){
 function save(){try{localStorage.setItem('qff_v5',JSON.stringify(S));}catch(e){}}
 function ini(n){return n.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);}
 function goTo(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');window.scrollTo(0,0);}
-function getOrden(j){const s=(j-1)%15;return[...ORDEN0.slice(s),...ORDEN0.slice(0,s)];}
+// Traduce un número de jornada de LaLiga a la "ronda real" de la familia — solo avanza cuando
+// una jornada se juega de verdad, así que si se saltan jornadas (ej. 2 y 3 nunca se apostaron),
+// la rotación de turnos no se come esos huecos. Sin fila explícita, se asume que coincide con
+// el propio número de jornada (compatibilidad con jornadas antiguas, ej. la 1).
+function getRotacion(j){
+  const r=S.rotacionPorJornada&&S.rotacionPorJornada[j];
+  return (r!=null&&!isNaN(r))?r:j;
+}
+function getOrden(j){const r=getRotacion(j);const s=(r-1)%15;return[...ORDEN0.slice(s),...ORDEN0.slice(0,s)];}
 function getPos(id,j){return getOrden(j).indexOf(id)+1;}
 function jugador(id){return JJ.find(j=>j.id===id);}
 function getJugadorDoble(j){return getOrden(j)[0];}
@@ -864,6 +872,19 @@ async function loadAllApuestasFromDB(){
   } catch(e){ console.error('Error loading all apuestas:', e); }
 }
 
+// Carga qué "ronda real" de rotación corresponde a cada jornada (ver getRotacion) — se necesita
+// tanto para la jornada actual como para el histórico, así que se traen todas de una vez.
+async function loadRotaciones(){
+  try {
+    const supa = getSupa();
+    const { data } = await supa.from('jornada_estado').select('jornada,valor').eq('clave','rotacion');
+    const nuevo = {};
+    (data||[]).forEach(row => { nuevo[row.jornada] = parseInt(row.valor); });
+    S.rotacionPorJornada = nuevo;
+    save();
+  } catch(e){ console.error('Error loading rotaciones:', e); }
+}
+
 async function loadApuestasFromDB(jornada){
   try {
     const supa = getSupa();
@@ -978,7 +999,7 @@ async function continuarLogin(pid){
   await cargarPerfiles(); // fotos/nombres personalizados — si no, se quedan en el avatar gris por defecto
   // Load partidos first (updates JORNADA_ACTUAL), then load apuestas for correct jornada
   await cargarJornadaLoterías();
-  await loadAllApuestasFromDB();
+  await Promise.all([loadAllApuestasFromDB(), loadRotaciones()]);
   await Promise.all([loadApuestasFromDB(JORNADA_ACTUAL), loadDobleFromDB(JORNADA_ACTUAL)]);
   // Cargar historico de jornadas pasadas en segundo plano
   cargarHistoricoAutomatico();
