@@ -1134,7 +1134,6 @@ function renderSinJornada(p){
   let h=topbarHtml(p);
   h+=`<div class="page" style="padding-top:8px;">`;
   h+=`<div class="alert alert-warn"><i class="ti ti-calendar-off"></i><p>Esta semana no hay jornada de Primera suficiente para la quiniela. Vuelve a mirar más adelante.</p></div>`;
-  h+=`<button onclick="verClasificacion('liga1')" class="btn btn-secondary" style="margin-top:8px;width:100%;"><i class="ti ti-table"></i> Ver clasificación equipos liga</button>`;
   h+=`</div>`;
   document.getElementById('tab-jornada').innerHTML=h;
 }
@@ -1223,6 +1222,7 @@ function renderStep2(p){
     <p style="font-size:11px;color:var(--text-ter);text-align:center;margin-top:8px;">Si cedes el turno quedará pendiente hasta que entre tu pareja.</p>`;
   }
 
+  h+=`<button onclick="verClasificacion('liga1')" class="btn btn-secondary" style="margin-top:8px;width:100%;"><i class="ti ti-table"></i> Ver clasificación equipos liga</button>`;
   h+=`<button onclick="S.step=1;renderJornada();" style="margin-top:10px;width:100%;padding:10px;background:none;border:none;font-size:13px;color:var(--text-sec);cursor:pointer;">
     <i class="ti ti-arrow-left" style="vertical-align:-2px;margin-right:4px;"></i>Volver a mi partido
   </button>`;
@@ -1260,9 +1260,8 @@ function renderStep3(p){
   </div>`;
   h+=renderDobleBanner(p,ap);
   h+=renderGlobalTable(p,ap);
-  h+=`<button onclick="verClasificacion('liga1')" class="btn btn-secondary" style="margin-top:14px;width:100%;"><i class="ti ti-table"></i> Ver clasificación equipos liga</button>`;
   if(resultadosEnFirme(PARTIDOS)){
-    h+=`<button onclick="abrirModalVAR(JORNADA)" class="btn btn-secondary" style="margin-top:8px;width:100%;color:var(--orange-text);"><i class="ti ti-flag"></i> Solicitar VAR</button>`;
+    h+=`<button onclick="abrirModalVAR(JORNADA)" class="btn btn-secondary" style="margin-top:14px;width:100%;color:var(--orange-text);"><i class="ti ti-flag"></i> Solicitar VAR</button>`;
   }
   h+=`</div>`;
   document.getElementById('tab-jornada').innerHTML=h;
