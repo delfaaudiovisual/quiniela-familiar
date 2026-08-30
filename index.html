@@ -1199,8 +1199,9 @@ function renderStep3(p){
   </div>`;
   h+=renderDobleBanner(p,ap);
   h+=renderGlobalTable(p,ap);
+  h+=`<button onclick="verClasificacion('liga1')" class="btn btn-secondary" style="margin-top:14px;width:100%;"><i class="ti ti-table"></i> Ver clasificación equipos liga</button>`;
   if(resultadosEnFirme(PARTIDOS)){
-    h+=`<button onclick="abrirModalVAR(JORNADA)" class="btn btn-secondary" style="margin-top:14px;width:100%;color:var(--orange-text);"><i class="ti ti-flag"></i> Solicitar VAR</button>`;
+    h+=`<button onclick="abrirModalVAR(JORNADA)" class="btn btn-secondary" style="margin-top:8px;width:100%;color:var(--orange-text);"><i class="ti ti-flag"></i> Solicitar VAR</button>`;
   }
   h+=`</div>`;
   document.getElementById('tab-jornada').innerHTML=h;
