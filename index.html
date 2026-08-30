@@ -1005,6 +1005,67 @@ async function continuarLogin(pid){
   cargarHistoricoAutomatico();
   // Registrar notificaciones en segundo plano
   registrarNotificaciones(pid);
+
+  // Si Felix entra y hay una jornada esperando su confirmación (abrir/saltar), se le muestra
+  // esa pantalla antes que nada — solo él la ve.
+  if(pid==='felix'){
+    const pendiente = await getJornadaPendienteConfirmacion();
+    if(pendiente!=null){ renderConfirmarJornada(pendiente); return; }
+  }
+  navTo('jornada');
+}
+
+async function getJornadaPendienteConfirmacion(){
+  try {
+    const supa = getSupa();
+    const { data } = await supa.from('jornada_estado').select('jornada')
+      .eq('clave','pendiente_confirmacion').eq('valor','true')
+      .order('jornada', { ascending: false }).limit(1);
+    return (data && data[0]) ? data[0].jornada : null;
+  } catch(e){ console.error('Error comprobando jornada pendiente:', e); return null; }
+}
+
+function renderConfirmarJornada(jornadaPendiente){
+  const p=jugador(S.player);
+  const siguiente=jornadaPendiente+1;
+  let h=topbarHtml(p);
+  h+=`<div class="page" style="padding-top:8px;">
+    <div class="card" style="text-align:center;padding:28px 18px;">
+      <p style="font-size:32px;margin-bottom:10px;">🏁</p>
+      <p style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:6px;">Finalizada la jornada ${jornadaPendiente}</p>
+      <p style="font-size:14px;color:var(--text-sec);margin-bottom:22px;">¿Jugamos la jornada ${siguiente}? Dime si abrimos apuestas o la saltamos.</p>
+      <button onclick="confirmarJornada('abrir')" class="btn btn-primary" style="width:100%;margin-bottom:10px;">
+        <i class="ti ti-check"></i> Abrir jornada ${siguiente}
+      </button>
+      <button onclick="confirmarJornada('saltar')" class="btn btn-secondary" style="width:100%;color:var(--red-text);">
+        <i class="ti ti-player-skip-forward"></i> Saltar jornada ${siguiente}
+      </button>
+      <p style="font-size:11px;color:var(--text-ter);margin-top:16px;">Si no decides nada, en unas horas se abrirá sola.</p>
+    </div>
+  </div>`;
+  document.getElementById('tab-jornada').innerHTML=h;
+}
+
+async function confirmarJornada(accion){
+  const p=jugador(S.player);
+  if(!p||p.id!=='felix') return;
+  document.getElementById('tab-jornada').innerHTML='<div style="text-align:center;padding:80px 20px;"><img src="icon.png" style="width:64px;height:64px;border-radius:16px;animation:pulse-logo 1.3s ease-in-out infinite;"><p style="margin-top:14px;font-size:14px;color:var(--text-sec);">Aplicando...</p></div>';
+  try {
+    const res=await fetch(`${SUPA_FUNCTIONS_URL}/quick-task`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':`Bearer ${ANON_KEY}`},
+      body:JSON.stringify({ tipo:'confirmar_jornada', jugador_id:p.id, datos:{ accion } })
+    });
+    const data=await res.json();
+    if(!res.ok||data.error){ alert('Error: '+(data.error||'desconocido')); }
+  } catch(e){
+    console.error('Error confirmando jornada:', e);
+    alert('Error de conexión, inténtalo de nuevo.');
+  }
+  // Recargar todo desde cero para reflejar la nueva jornada_actual/rotación
+  await cargarJornadaLoterías();
+  await Promise.all([loadAllApuestasFromDB(), loadRotaciones()]);
+  await Promise.all([loadApuestasFromDB(JORNADA_ACTUAL), loadDobleFromDB(JORNADA_ACTUAL)]);
   navTo('jornada');
 }
 
