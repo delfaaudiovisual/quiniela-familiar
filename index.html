@@ -1553,6 +1553,8 @@ function renderGlobalTable(p,ap){
           pBorder=ok?'var(--green-text)':'var(--red-text)';
         }
         aBadge=`<span style="display:inline-flex;align-items:center;justify-content:center;height:30px;min-width:52px;font-size:13px;font-weight:800;border-radius:6px;background:${pBg};color:${pColor};border:1.5px solid ${pBorder};flex-shrink:0;margin-left:auto;">${pap.l}-${pap.v}</span>`;
+      } else if(BLOQUEADO){
+        aBadge=`<div style="display:flex;align-items:center;justify-content:center;height:30px;min-width:60px;flex-shrink:0;margin-left:auto;gap:3px;"><i class="ti ti-lock" style="font-size:12px;color:var(--text-ter);" aria-hidden="true"></i><span style="font-size:11px;color:var(--text-ter);">Bloqueada</span></div>`;
       } else {
         aBadge=`<span style="display:inline-flex;align-items:center;justify-content:center;height:30px;width:44px;font-size:16px;color:var(--text-ter);flex-shrink:0;margin-left:auto;">—</span>`;
       }
