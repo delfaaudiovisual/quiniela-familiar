@@ -2338,7 +2338,7 @@ async function cargarPerfiles(){
 
 
 // ============ CLASIFICACION MODAL ============
-const S_clasi = { grupos: null, liga1: null, liga2: null, ligaf: null };
+const S_clasi = { liga1: null, liga2: null, ligaf: null };
 
 async function verClasificacion(tipo) {
   let modal = document.getElementById('modal-clasi');
@@ -2361,7 +2361,7 @@ async function verClasificacion(tipo) {
   </div>`;
   modal.style.display = 'flex';
   document.body.style.overflow = 'hidden';
-  await cargarClasificacion(tipo || 'mundial');
+  await cargarClasificacion(tipo || 'liga1');
 }
 
 function cerrarClasificacion() {
@@ -2386,7 +2386,6 @@ async function cargarClasificacion(tipo) {
   const content = document.getElementById('clasi-content');
   if (!content) return;
 
-  if (tipo === 'mundial' && S_clasi.grupos) { renderClasificacion(tipo, S_clasi.grupos); return; }
   if (tipo === 'liga1' && S_clasi.liga1) { renderClasificacion(tipo, S_clasi.liga1); return; }
   if (tipo === 'liga2' && S_clasi.liga2) { renderClasificacion(tipo, S_clasi.liga2); return; }
   if (tipo === 'ligaf' && S_clasi.ligaf) { renderClasificacion(tipo, S_clasi.ligaf); return; }
@@ -2400,7 +2399,6 @@ async function cargarClasificacion(tipo) {
       body: JSON.stringify({ tipo })
     });
     const data = await res.json();
-    if (tipo === 'mundial') S_clasi.grupos = data;
     if (tipo === 'liga1') S_clasi.liga1 = data;
     if (tipo === 'liga2') S_clasi.liga2 = data;
     if (tipo === 'ligaf') S_clasi.ligaf = data;
@@ -2432,42 +2430,18 @@ function renderClasificacion(tipo, data) {
   const content = document.getElementById('clasi-content');
   if (!content) return;
 
-  if (tipo === 'mundial') {
-    const grupos = data.grupos || [];
-    let grupoActual = grupos[0]?.nombre || '';
-    const doRender = (nombre) => {
-      const grupo = grupos.find(g => g.nombre === nombre);
-      if (!grupo) return '';
-      return grupo.equipos.map(eq => renderFilaClasi(eq.pos, eq.name, eq.pts, eq.clasificado ? 'var(--blue)' : 'transparent')).join('') +
-        '<div style="padding:6px 0;display:flex;align-items:center;gap:6px;"><div style="width:6px;height:6px;border-radius:50%;background:var(--blue);"></div><span style="font-size:10px;color:var(--text-sec);">Clasificado a octavos</span></div>';
-    };
-    const grupoTabs = grupos.map(g =>
-      `<span id="gtab-${g.nombre}" onclick="switchGrupo('${g.nombre}')" style="padding:4px 8px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:500;background:${g.nombre===grupoActual?'var(--blue-bg)':'transparent'};color:${g.nombre===grupoActual?'var(--blue-text)':'var(--text-sec)'};">${g.nombre}</span>`
-    ).join('');
-    content.innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:4px;padding:8px 0 12px;">${grupoTabs}</div><div id="grupo-content">${doRender(grupoActual)}</div>`;
-    window.switchGrupo = (nombre) => {
-      document.querySelectorAll('[id^="gtab-"]').forEach(el => {
-        const active = el.id === `gtab-${nombre}`;
-        el.style.background = active ? 'var(--blue-bg)' : 'transparent';
-        el.style.color = active ? 'var(--blue-text)' : 'var(--text-sec)';
-      });
-      const gc = document.getElementById('grupo-content');
-      if (gc) gc.innerHTML = doRender(nombre);
-    };
-  } else {
-    const equipos = data.equipos || [];
-    const header = '<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:0.5px solid var(--border);"><span style="font-size:10px;color:var(--text-ter);width:18px;text-align:center;">#</span><span style="font-size:10px;color:var(--text-ter);flex:1;">Equipo</span><span style="font-size:10px;color:var(--text-ter);">Pts</span></div>';
-    // Las franjas de Champions/Europa/Descenso solo aplican a Primera/Segunda masculina —
-    // la Liga F tiene otro número de equipos y otros puestos europeos, así que se muestra sin colorear.
-    const conFranjas = tipo !== 'ligaf';
-    const rows = equipos.map((eq, i) => {
-      const pos = i + 1;
-      const accent = !conFranjas ? 'transparent' : pos <= 4 ? '#1a2550' : pos <= 6 ? '#2e7d32' : pos >= equipos.length - 2 ? '#c62828' : 'transparent';
-      return renderFilaClasi(pos, eq.name, eq.pts, accent, eq.forma);
-    }).join('');
-    const leyenda = conFranjas ? '<div style="padding:8px 0;display:flex;gap:12px;flex-wrap:wrap;"><div style="display:flex;align-items:center;gap:4px;"><div style="width:6px;height:6px;border-radius:50%;background:#1a2550;"></div><span style="font-size:10px;color:var(--text-sec);">Champions</span></div><div style="display:flex;align-items:center;gap:4px;"><div style="width:6px;height:6px;border-radius:50%;background:#2e7d32;"></div><span style="font-size:10px;color:var(--text-sec);">Europa</span></div><div style="display:flex;align-items:center;gap:4px;"><div style="width:6px;height:6px;border-radius:50%;background:#c62828;"></div><span style="font-size:10px;color:var(--text-sec);">Descenso</span></div></div>' : '';
-    content.innerHTML = header + rows + leyenda;
-  }
+  const equipos = data.equipos || [];
+  const header = '<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:0.5px solid var(--border);"><span style="font-size:10px;color:var(--text-ter);width:18px;text-align:center;">#</span><span style="font-size:10px;color:var(--text-ter);flex:1;">Equipo</span><span style="font-size:10px;color:var(--text-ter);">Pts</span></div>';
+  // Las franjas de Champions/Europa/Descenso solo aplican a Primera/Segunda masculina —
+  // la Liga F tiene otro número de equipos y otros puestos europeos, así que se muestra sin colorear.
+  const conFranjas = tipo !== 'ligaf';
+  const rows = equipos.map((eq, i) => {
+    const pos = i + 1;
+    const accent = !conFranjas ? 'transparent' : pos <= 4 ? '#1a2550' : pos <= 6 ? '#2e7d32' : pos >= equipos.length - 2 ? '#c62828' : 'transparent';
+    return renderFilaClasi(pos, eq.name, eq.pts, accent, eq.forma);
+  }).join('');
+  const leyenda = conFranjas ? '<div style="padding:8px 0;display:flex;gap:12px;flex-wrap:wrap;"><div style="display:flex;align-items:center;gap:4px;"><div style="width:6px;height:6px;border-radius:50%;background:#1a2550;"></div><span style="font-size:10px;color:var(--text-sec);">Champions</span></div><div style="display:flex;align-items:center;gap:4px;"><div style="width:6px;height:6px;border-radius:50%;background:#2e7d32;"></div><span style="font-size:10px;color:var(--text-sec);">Europa</span></div><div style="display:flex;align-items:center;gap:4px;"><div style="width:6px;height:6px;border-radius:50%;background:#c62828;"></div><span style="font-size:10px;color:var(--text-sec);">Descenso</span></div></div>' : '';
+  content.innerHTML = header + rows + leyenda;
 }
 
 // ============ HISTORICO AUTOMATICO ============
