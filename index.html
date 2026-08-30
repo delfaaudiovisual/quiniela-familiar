@@ -900,7 +900,7 @@ async function saveApuesta(jornada, jugadorId, apuesta, apostadoPor){
 
 async function apostarPorOtro(entityId, signo){
   const p=jugador(S.player);
-  if(!p) return;
+  if(!p||BLOQUEADO) return;
   if(!S.apuestas[JORNADA]) S.apuestas[JORNADA]={};
   S.apuestas[JORNADA][entityId]=signo;
   S.apuestas[JORNADA]['_por_'+entityId]=p.id;
@@ -1563,7 +1563,10 @@ function renderGlobalTable(p,ap){
           <div style="text-align:right;"><span style="display:inline-flex;align-items:center;justify-content:center;height:30px;width:44px;font-size:14px;font-weight:800;border-radius:6px;background:${bg};color:${color};border:1.5px solid ${border};">${a}</span>${porOtroTag}${dobleTag}</div>
           ${dobleIcon}
         </div>`;
-      } else if(BLOQUEADO && !isMe && !isMePar){
+      } else if(BLOQUEADO){
+        // Bloqueada y sin apuesta — ya no tiene sentido ofrecer "apostar por otro" (el plazo pasó)
+        aBadge=`<div style="display:flex;align-items:center;justify-content:center;height:30px;min-width:60px;flex-shrink:0;margin-left:auto;gap:3px;"><i class="ti ti-lock" style="font-size:12px;color:var(--text-ter);" aria-hidden="true"></i><span style="font-size:11px;color:var(--text-ter);">Bloqueada</span></div>`;
+      } else if(!isMe && !isMePar){
         aBadge = _porOtroSel===ent.id
           ? `<div style="display:flex;gap:4px;flex-shrink:0;margin-left:auto;" onclick="event.stopPropagation()">
               ${['1','X','2'].map(o=>`<button class="ap-btn" style="height:30px;min-width:30px;font-size:12px;" onclick="apostarPorOtro('${ent.id}','${o}')">${o}</button>`).join('')}
