@@ -338,16 +338,17 @@ const PARTIDOS=[
 ];
 let JORNADA=1; // current active jornada
 let JORNADA_ACTUAL=1; // jornada real actual
-// Bloqueo automático: jueves 15h - domingo 23:59h
+// Bloqueo automático: jueves 15h - martes 00h (las jornadas van de viernes a lunes)
 function calcularBloqueado(){
   const now = new Date();
   const day = now.getDay(); // 0=dom, 1=lun, 2=mar, 3=mie, 4=jue, 5=vie, 6=sab
   const hour = now.getHours();
-  // Bloqueado desde jueves 15h hasta lunes 00h
+  // Bloqueado desde jueves 15h hasta lunes a medianoche (se libera el martes 00h)
   if(day === 4 && hour >= 15) return true; // jueves desde 15h
   if(day === 5) return true; // viernes
   if(day === 6) return true; // sábado
   if(day === 0) return true; // domingo
+  if(day === 1) return true; // lunes (la jornada sigue activa hasta medianoche)
   return false;
 }
 let BLOQUEADO = calcularBloqueado();
@@ -1125,9 +1126,18 @@ function logout(){S.player=null;save();setCookie('qff_player','',0);/* qff_last_
 function renderJornada(){
   const p=jugador(S.player);if(!p)return;
   if(S.jornadaValida===false){ renderSinJornada(p); return; }
+  if(S.apuestas[JORNADA_ACTUAL]&&S.apuestas[JORNADA_ACTUAL].saltada==='true'){ renderJornadaSaltada(p); return; }
   if(S.step===1) renderStep1(p);
   else if(S.step===2) renderStep2(p);
   else renderStep3(p);
+}
+
+function renderJornadaSaltada(p){
+  let h=topbarHtml(p);
+  h+=`<div class="page" style="padding-top:8px;">`;
+  h+=`<div class="alert alert-warn"><i class="ti ti-player-skip-forward"></i><p>Esta semana saltamos la quiniela. En cuanto termine la jornada ${JORNADA_ACTUAL}, se abrirá la siguiente.</p></div>`;
+  h+=`</div>`;
+  document.getElementById('tab-jornada').innerHTML=h;
 }
 
 function renderSinJornada(p){
