@@ -1343,13 +1343,44 @@ async function confirmarDoble(signo){
   comprobarTodosApostaron(); // ahora sí está todo, incluido el doble: avisa a Felix
 }
 
-// Aviso corto arriba de la tabla — el detalle del Doble se ve en la fila de esa casilla
+// Cuando el turno del Doble le cae a una pareja, cualquiera de los dos puede ponerlo — o cedérselo
+// al otro, igual que con la apuesta de pareja normal (skipPareja). El que cede queda fuera; al otro
+// le queda obligado y se le avisa por notificación.
+function cederDoble(){
+  const p=jugador(S.player);
+  if(!S.apuestas[JORNADA])S.apuestas[JORNADA]={};
+  S.apuestas[JORNADA]['_skip_doble']=p.id;
+  save();
+  saveEstado(JORNADA, '_skip_doble', p.id);
+  const comp=JJ.find(j=>j.id!==p.id&&j.p===p.p);
+  if(comp) avisarPareja(comp.id, `🎯 ${p.n} te ha dejado el Doble a ti. ¡Te toca ponerlo!`);
+  renderJornada();
+}
+
+// Aviso corto arriba de la tabla — el detalle del Doble se ve en la fila de esa casilla.
+// Si el turno le cae a una pareja (dobleId tipo 'p1'..'p5'), pertenece a los dos miembros —
+// cualquiera lo pone, o uno se lo cede al otro (que entonces queda obligado a ponerlo).
 function renderDobleBanner(p,ap){
   if(JORNADA!==JORNADA_ACTUAL) return '';
   const dobleId=getJugadorDoble(JORNADA_ACTUAL);
   if(ap.doble) return '';
-  if(p.id!==dobleId) return '';
   if(!todosApostadoLocal(JORNADA_ACTUAL)) return '';
+  const esPareja=dobleId.startsWith('p');
+  const pertenezco=esPareja?p.p===dobleId:p.id===dobleId;
+  if(!pertenezco) return '';
+  const cedidoPor=ap['_skip_doble'];
+  if(cedidoPor===p.id) return ''; // yo se lo cedí a mi pareja, no me toca a mí
+  if(esPareja&&cedidoPor){
+    const comp=JJ.find(j=>j.id!==p.id&&j.p===p.p);
+    return `<div class="alert alert-warn" style="margin-bottom:10px;"><i class="ti ti-alert-triangle"></i><p>${comp?comp.n:'Tu pareja'} te ha dejado el Doble a ti. Toca la casilla marcada para ponerlo (signo contrario al del dueño).</p></div>`;
+  }
+  if(esPareja){
+    return `<div class="alert alert-purple" style="margin-bottom:10px;">
+      <i class="ti ti-target-arrow"></i>
+      <p>🎯 Todos han apostado. Os toca el Doble como pareja — toca la casilla marcada para ponerlo, o cédeselo a tu pareja.</p>
+      <button onclick="event.stopPropagation();cederDoble();" style="margin-top:8px;font-size:12px;color:var(--blue);background:none;border:none;cursor:pointer;">Que lo ponga mi pareja</button>
+    </div>`;
+  }
   return `<div class="alert alert-purple" style="margin-bottom:10px;"><i class="ti ti-target-arrow"></i><p>🎯 Todos han apostado. Toca la casilla marcada para poner el Doble (signo contrario al del dueño).</p></div>`;
 }
 
@@ -1590,10 +1621,15 @@ function renderGlobalTable(p,ap){
   // Ordenar por número de partido (posición en la jornada)
   all.sort((a,b)=>getPos(a.id,JORNADA)-getPos(b.id,JORNADA));
 
-  // Estado de El Doble, para pintarlo inline en la fila de la casilla correspondiente
+  // Estado de El Doble, para pintarlo inline en la fila de la casilla correspondiente. Cuando el
+  // turno le toca a una pareja (dobleIdActivo tipo 'p1'..'p5'), pertenece a los dos miembros —
+  // salvo que uno se lo haya cedido al otro (ver cederDoble/renderDobleBanner).
   const dobleIdActivo = JORNADA===JORNADA_ACTUAL ? getJugadorDoble(JORNADA) : null;
   const dobleApActivo = JORNADA===JORNADA_ACTUAL ? ap.doble : null;
-  const esMiTurnoDoble = JORNADA===JORNADA_ACTUAL && p.id===dobleIdActivo && !dobleApActivo && todosApostadoLocal(JORNADA_ACTUAL);
+  const dobleEsPareja = dobleIdActivo && dobleIdActivo.startsWith('p');
+  const perteneceAlTurnoDoble = dobleEsPareja ? p.p===dobleIdActivo : p.id===dobleIdActivo;
+  const yoCediDoble = ap['_skip_doble']===p.id;
+  const esMiTurnoDoble = JORNADA===JORNADA_ACTUAL && perteneceAlTurnoDoble && !yoCediDoble && !dobleApActivo && todosApostadoLocal(JORNADA_ACTUAL);
   const prohibidasDoble = esMiTurnoDoble ? casillasProhibidasDoble(p.id,JORNADA_ACTUAL) : [];
 
   let h=`<div class="card-flush" style="padding:0 14px;">`;
