@@ -1011,7 +1011,7 @@ async function continuarLogin(pid){
   // esa pantalla antes que nada — solo él la ve.
   if(pid==='felix'){
     const pendiente = await getJornadaPendienteConfirmacion();
-    if(pendiente!=null){ renderConfirmarJornada(pendiente); return; }
+    if(pendiente!=null){ await renderConfirmarJornada(pendiente); return; }
   }
   navTo('jornada');
 }
@@ -1026,23 +1026,55 @@ async function getJornadaPendienteConfirmacion(){
   } catch(e){ console.error('Error comprobando jornada pendiente:', e); return null; }
 }
 
-function renderConfirmarJornada(jornadaPendiente){
+async function renderConfirmarJornada(jornadaPendiente){
   const p=jugador(S.player);
   const siguiente=jornadaPendiente+1;
-  let h=topbarHtml(p);
+  document.getElementById('tab-jornada').innerHTML='<div style="text-align:center;padding:80px 20px;"><img src="icon.png" style="width:64px;height:64px;border-radius:16px;animation:pulse-logo 1.3s ease-in-out infinite;"><p style="margin-top:14px;font-size:14px;color:var(--text-sec);">Cargando previa...</p></div>';
+
+  // Previa de la jornada siguiente — para que Felix vea qué partidos son antes de decidir,
+  // no solo un número. jornadaValida/primeraCount ya vienen calculados por el backend (mismo
+  // chequeo que usa la pantalla normal para "esta semana no hay jornada de Primera").
+  let preview=null;
+  try {
+    const res=await fetch(`${SUPA_FUNCTIONS_URL}/quiniela-jornada`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':`Bearer ${ANON_KEY}`},
+      body:JSON.stringify({ jornadaHistorica: siguiente })
+    });
+    const data=await res.json();
+    if(data.partidos&&data.partidos.length) preview=data;
+  } catch(e){ console.error('Error cargando previa de jornada:', e); }
+
+  let previaHtml='';
+  if(preview){
+    const regulares=preview.partidos.filter(pt=>!pt.pleno);
+    if(preview.jornadaValida===false){
+      previaHtml+=`<div class="alert alert-warn" style="text-align:left;margin-bottom:14px;"><i class="ti ti-alert-triangle"></i><p>⚠️ Solo ${preview.primeraCount} de ${regulares.length} partidos son de Primera — no tiene pinta de ser una jornada normal de LaLiga (puede ser una semana de Champions/Copa). Revisa antes de decidir.</p></div>`;
+    }
+    previaHtml+=`<div class="card" style="text-align:left;padding:14px 16px;margin-bottom:14px;">
+      <p class="sec-label" style="margin-bottom:8px;">Partidos de la jornada ${siguiente}</p>
+      ${regulares.map((pt,i)=>`<p style="font-size:13px;color:var(--text);padding:5px 0;border-bottom:0.5px solid var(--border-light);">${i+1}. ${pt.l} — ${pt.v}${pt.dia?` <span style="color:var(--text-ter);font-size:11px;">(${pt.dia})</span>`:''}</p>`).join('')}
+    </div>`;
+  } else {
+    previaHtml=`<div class="alert alert-info" style="text-align:left;margin-bottom:14px;"><i class="ti ti-info-circle"></i><p>No se pudo cargar la previa de partidos — puedes decidir igualmente.</p></div>`;
+  }
+
+  const p2=jugador(S.player);
+  let h=topbarHtml(p2);
   h+=`<div class="page" style="padding-top:8px;">
-    <div class="card" style="text-align:center;padding:28px 18px;">
+    <div class="card" style="text-align:center;padding:22px 18px;margin-bottom:14px;">
       <p style="font-size:32px;margin-bottom:10px;">🏁</p>
       <p style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:6px;">Finalizada la jornada ${jornadaPendiente}</p>
-      <p style="font-size:14px;color:var(--text-sec);margin-bottom:22px;">¿Jugamos la jornada ${siguiente}? Dime si abrimos apuestas o la saltamos.</p>
-      <button onclick="confirmarJornada('abrir')" class="btn btn-primary" style="width:100%;margin-bottom:10px;">
-        <i class="ti ti-check"></i> Abrir jornada ${siguiente}
-      </button>
-      <button onclick="confirmarJornada('saltar')" class="btn btn-secondary" style="width:100%;color:var(--red-text);">
-        <i class="ti ti-player-skip-forward"></i> Saltar jornada ${siguiente}
-      </button>
-      <p style="font-size:11px;color:var(--text-ter);margin-top:16px;">Si no decides nada, en unas horas se abrirá sola.</p>
+      <p style="font-size:14px;color:var(--text-sec);">¿Jugamos la jornada ${siguiente}? Dime si abrimos apuestas o la saltamos.</p>
     </div>
+    ${previaHtml}
+    <button onclick="confirmarJornada('abrir')" class="btn btn-primary" style="width:100%;margin-bottom:10px;">
+      <i class="ti ti-check"></i> Abrir jornada ${siguiente}
+    </button>
+    <button onclick="confirmarJornada('saltar')" class="btn btn-secondary" style="width:100%;color:var(--red-text);">
+      <i class="ti ti-player-skip-forward"></i> Saltar jornada ${siguiente}
+    </button>
+    <p style="font-size:11px;color:var(--text-ter);margin-top:16px;text-align:center;">No hay límite de tiempo — la app espera a que decidas.</p>
   </div>`;
   document.getElementById('tab-jornada').innerHTML=h;
 }
