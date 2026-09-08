@@ -352,6 +352,16 @@ function calcularBloqueado(){
   return false;
 }
 let BLOQUEADO = calcularBloqueado();
+// Además del calendario, si TODOS los resultados de la jornada activa (los 14 + el Pleno) ya
+// están firmes, no hay nada que editar aunque el calendario ya haya soltado el bloqueo (ej.
+// martes, con la jornada cerrada pero Felix todavía sin confirmar la siguiente) — sin esto, la
+// app dejaba "reabierta" para cambios una jornada que ya había terminado del todo.
+function todosLosResultadosFirmes(partidos){
+  return !!partidos && partidos.length>0 && partidos.every(pt=>pt&&pt.c===true);
+}
+function actualizarBloqueado(){
+  BLOQUEADO = calcularBloqueado() || todosLosResultadosFirmes(PARTIDOS);
+}
 // Resultados en firme = los 14 partidos regulares de la jornada ya tienen resultado confirmado.
 // Se usa para no dejar pedir VAR hasta que haya algo que revisar de verdad.
 function resultadosEnFirme(partidos){
@@ -822,6 +832,7 @@ async function cargarJornadaLoterías(modo='auto'){
 
       // Smart polling — only when matches are being played
       programarPolling();
+      actualizarBloqueado();
 
       return true;
     }
@@ -837,6 +848,7 @@ async function cargarJornadaLoterías(modo='auto'){
           PARTIDOS[i].r = p[i].r || null;
           PARTIDOS[i].c = p[i].c || false;
         }
+        actualizarBloqueado();
         return true;
       }
     } catch(e2){}
