@@ -1047,7 +1047,17 @@ async function renderConfirmarJornada(jornadaPendiente){
   const siguiente=jornadaPendiente+1;
   document.getElementById('tab-jornada').innerHTML='<div style="text-align:center;padding:80px 20px;"><img src="icon.png" style="width:64px;height:64px;border-radius:16px;animation:pulse-logo 1.3s ease-in-out infinite;"><p style="margin-top:14px;font-size:14px;color:var(--text-sec);">Cargando previa...</p></div>';
 
-  // Previa de la jornada siguiente — para que Felix vea qué partidos son antes de decidir,
+  // ¿La jornada que acaba de cerrar (jornadaPendiente) se jugó de verdad o se saltó? Cambia el
+  // texto de cabecera — "Finalizada la jornada X" sonaba raro cuando X nunca se llegó a jugar.
+  let jornadaPendienteSaltada=false;
+  try {
+    const supa=getSupa();
+    const { data } = await supa.from('jornada_estado').select('valor')
+      .eq('jornada',jornadaPendiente).eq('clave','saltada').limit(1);
+    jornadaPendienteSaltada = data?.[0]?.valor==='true';
+  } catch(e){ console.error('Error comprobando si la jornada se saltó:', e); }
+
+  // Previa de la jornada siguiente — para que el admin vea qué partidos son antes de decidir,
   // no solo un número. jornadaValida/primeraCount ya vienen calculados por el backend (mismo
   // chequeo que usa la pantalla normal para "esta semana no hay jornada de Primera").
   let preview=null;
@@ -1075,27 +1085,38 @@ async function renderConfirmarJornada(jornadaPendiente){
     previaHtml=`<div class="alert alert-info" style="text-align:left;margin-bottom:14px;"><i class="ti ti-info-circle"></i><p>No se pudo cargar la previa de partidos — puedes decidir igualmente.</p></div>`;
   }
 
+  const cabecera = jornadaPendienteSaltada
+    ? `Saltamos la jornada ${jornadaPendiente}, pero ya está disponible la ${siguiente}`
+    : `Finalizada la jornada ${jornadaPendiente}`;
+
   const p2=jugador(S.player);
   let h=topbarHtml(p2);
   h+=`<div class="page" style="padding-top:8px;">
     <div class="card" style="text-align:center;padding:22px 18px;margin-bottom:14px;">
-      <p style="font-size:32px;margin-bottom:10px;">🏁</p>
-      <p style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:6px;">Finalizada la jornada ${jornadaPendiente}</p>
+      <p style="font-size:32px;margin-bottom:10px;">${jornadaPendienteSaltada?'⏭️':'🏁'}</p>
+      <p style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:6px;">${cabecera}</p>
       <p style="font-size:14px;color:var(--text-sec);">¿Jugamos la jornada ${siguiente}? Dime si abrimos apuestas o la saltamos.</p>
     </div>
     ${previaHtml}
-    <button onclick="confirmarJornada('abrir')" class="btn btn-primary" style="width:100%;margin-bottom:10px;">
+    <button onclick="confirmarJornada('abrir')" class="btn btn-primary" style="width:100%;margin-bottom:14px;">
       <i class="ti ti-check"></i> Abrir jornada ${siguiente}
     </button>
-    <button onclick="confirmarJornada('saltar')" class="btn btn-secondary" style="width:100%;color:var(--red-text);">
-      <i class="ti ti-player-skip-forward"></i> Saltar jornada ${siguiente}
+    <p style="font-size:11px;font-weight:600;color:var(--text-sec);text-transform:uppercase;letter-spacing:0.04em;text-align:center;margin-bottom:8px;">O saltar jornada ${siguiente} — elige qué aviso mandar</p>
+    <button onclick="confirmarJornada('saltar', null)" class="btn btn-secondary" style="width:100%;margin-bottom:8px;color:var(--red-text);">
+      <i class="ti ti-bell-off"></i> Saltar sin avisar a nadie
+    </button>
+    <button onclick="confirmarJornada('saltar', 'segunda')" class="btn btn-secondary" style="width:100%;margin-bottom:8px;color:var(--red-text);">
+      <i class="ti ti-player-skip-forward"></i> Saltar y avisar: es de Segunda
+    </button>
+    <button onclick="confirmarJornada('saltar', 'selecciones')" class="btn btn-secondary" style="width:100%;color:var(--red-text);">
+      <i class="ti ti-player-skip-forward"></i> Saltar y avisar: es de selecciones
     </button>
     <p style="font-size:11px;color:var(--text-ter);margin-top:16px;text-align:center;">No hay límite de tiempo — la app espera a que decidas.</p>
   </div>`;
   document.getElementById('tab-jornada').innerHTML=h;
 }
 
-async function confirmarJornada(accion){
+async function confirmarJornada(accion, motivo){
   const p=jugador(S.player);
   if(!p||!ADMINS.includes(p.id)) return;
   document.getElementById('tab-jornada').innerHTML='<div style="text-align:center;padding:80px 20px;"><img src="icon.png" style="width:64px;height:64px;border-radius:16px;animation:pulse-logo 1.3s ease-in-out infinite;"><p style="margin-top:14px;font-size:14px;color:var(--text-sec);">Aplicando...</p></div>';
@@ -1103,7 +1124,7 @@ async function confirmarJornada(accion){
     const res=await fetch(`${SUPA_FUNCTIONS_URL}/quick-task`, {
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':`Bearer ${ANON_KEY}`},
-      body:JSON.stringify({ tipo:'confirmar_jornada', jugador_id:p.id, datos:{ accion } })
+      body:JSON.stringify({ tipo:'confirmar_jornada', jugador_id:p.id, datos:{ accion, motivo } })
     });
     const data=await res.json();
     if(!res.ok||data.error){ alert('Error: '+(data.error||'desconocido')); }
@@ -1115,6 +1136,11 @@ async function confirmarJornada(accion){
   await cargarJornadaLoterías();
   await Promise.all([loadAllApuestasFromDB(), loadRotaciones()]);
   await Promise.all([loadApuestasFromDB(JORNADA_ACTUAL), loadDobleFromDB(JORNADA_ACTUAL)]);
+  // Si saltar dejó ya lista la comprobación de la siguiente jornada (porque esa ya tenía datos
+  // publicados), encadena directamente la pantalla de confirmación en vez de volver a la app
+  // normal — así no hay que esperar a un aviso futuro para decidir.
+  const pendiente = await getJornadaPendienteConfirmacion();
+  if(pendiente!=null){ await renderConfirmarJornada(pendiente); return; }
   navTo('jornada');
 }
 
