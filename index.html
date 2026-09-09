@@ -876,6 +876,14 @@ async function loadAllApuestasFromDB(){
     const nuevo = {};
     if(r1.data) r1.data.forEach(row => {
       if(!nuevo[row.jornada]) nuevo[row.jornada] = {};
+      // apuestas_pleno no tiene columna apostado_por — el "apostado por otro" del Pleno se
+      // guarda como una fila marcador en esta misma tabla (jugador_id='_pleno_por_<entityId>'),
+      // que aquí se traduce de vuelta a la misma marca '_por_' que usan las casillas normales.
+      if(row.jugador_id.startsWith('_pleno_por_')){
+        const entityId = row.jugador_id.slice('_pleno_por_'.length);
+        if(row.apostado_por) nuevo[row.jornada]['_por_'+entityId] = row.apostado_por;
+        return;
+      }
       nuevo[row.jornada][row.jugador_id] = row.apuesta;
       if(row.apostado_por) nuevo[row.jornada]['_por_'+row.jugador_id] = row.apostado_por;
       if(PP[row.jugador_id]) nuevo[row.jornada]['_guardada_'+row.jugador_id] = true; // apuesta de pareja ya guardada de verdad en la BD
@@ -921,6 +929,13 @@ async function loadApuestasFromDB(jornada){
     ]);
     if(!S.apuestas[jornada]) S.apuestas[jornada] = {};
     if(r1.data) r1.data.forEach(row => {
+      // Ver loadAllApuestasFromDB: marca de "apostado por otro" del Pleno, guardada como fila
+      // sintética en la tabla apuestas.
+      if(row.jugador_id.startsWith('_pleno_por_')){
+        const entityId = row.jugador_id.slice('_pleno_por_'.length);
+        if(row.apostado_por) S.apuestas[jornada]['_por_'+entityId] = row.apostado_por;
+        return;
+      }
       S.apuestas[jornada][row.jugador_id] = row.apuesta;
       if(row.apostado_por) S.apuestas[jornada]['_por_'+row.jugador_id] = row.apostado_por;
       if(PP[row.jugador_id]) S.apuestas[jornada]['_guardada_'+row.jugador_id] = true;
@@ -967,9 +982,15 @@ async function apostarPlenoPorOtro(entityId, golesLocal, golesVisitante){
   const key='pleno_'+entityId;
   if(!S.apuestas[JORNADA]) S.apuestas[JORNADA]={};
   S.apuestas[JORNADA][key]={l:golesLocal, v:golesVisitante};
+  S.apuestas[JORNADA]['_por_'+entityId]=p.id; // igual que apostarPorOtro: no puntúa para el dueño
   if(PP[entityId]) S.apuestas[JORNADA]['_guardada_'+entityId]=true;
   save();
   await savePlenoApuesta(JORNADA, entityId, golesLocal, golesVisitante);
+  // apuestas_pleno no tiene columna apostado_por — se guarda la marca de "quién apostó por quién"
+  // como una fila más en la tabla apuestas (que sí la tiene), con un jugador_id sintético que no
+  // choca con ningún id real. loadApuestasFromDB/loadAllApuestasFromDB la reconocen y la
+  // traducen de vuelta a S.apuestas[jornada]['_por_'+entityId] al cargar.
+  await saveApuesta(JORNADA, '_pleno_por_'+entityId, 'x', p.id);
   _porOtroPlenoSel=null;
   renderJornada();
   comprobarTodosApostaron();
@@ -1760,26 +1781,34 @@ function renderGlobalTable(p,ap){
           pColor=ok?'var(--green-text)':'var(--red-text)';
           pBorder=ok?'var(--green-text)':'var(--red-text)';
         }
-        aBadge=`<span style="display:inline-flex;align-items:center;justify-content:center;height:30px;min-width:52px;font-size:13px;font-weight:800;border-radius:6px;background:${pBg};color:${pColor};border:1.5px solid ${pBorder};flex-shrink:0;margin-left:auto;">${pap.l}-${pap.v}</span>`;
-      } else if(_porOtroPlenoSel&&_porOtroPlenoSel.entityId===ent.id){
-        // Selección en dos pasos: goles del local, luego del visitante — se guarda en cuanto
-        // están los dos elegidos.
-        const sel=_porOtroPlenoSel;
-        const golOpts=['0','1','2','M'];
-        const filaGoles=(campo)=>golOpts.map(g=>`<button class="ap-btn" style="height:24px;min-width:22px;font-size:11px;padding:0;${sel[campo]===g?'background:var(--blue);color:#fff;':''}" onclick="_porOtroPlenoSel.${campo}='${g}';renderJornada();">${g}</button>`).join('');
-        aBadge=`<div style="display:flex;flex-direction:column;gap:3px;flex-shrink:0;margin-left:auto;align-items:flex-end;" onclick="event.stopPropagation()">
-          <div style="display:flex;gap:2px;">${filaGoles('l')}</div>
-          <div style="display:flex;gap:2px;">${filaGoles('v')}</div>
-          <div style="display:flex;gap:6px;margin-top:2px;">
-            ${sel.l&&sel.v?`<button onclick="apostarPlenoPorOtro('${ent.id}','${sel.l}','${sel.v}')" style="font-size:10px;font-weight:700;color:var(--green-text);background:none;border:none;cursor:pointer;">Guardar</button>`:''}
-            <button onclick="_porOtroPlenoSel=null;renderJornada();" style="font-size:10px;color:var(--text-ter);background:none;border:none;cursor:pointer;">Cancelar</button>
-          </div>
-        </div>`;
+        const porOtroPleno=ap['_por_'+ent.id];
+        const porOtroPlenoTag=porOtroPleno?`<p style="font-size:9px;color:var(--text-ter);text-align:right;margin-top:2px;">por ${jugador(porOtroPleno)?.n||porOtroPleno}</p>`:'';
+        aBadge=`<div style="text-align:right;flex-shrink:0;margin-left:auto;"><span style="display:inline-flex;align-items:center;justify-content:center;height:30px;min-width:52px;font-size:13px;font-weight:800;border-radius:6px;background:${pBg};color:${pColor};border:1.5px solid ${pBorder};">${pap.l}-${pap.v}</span>${porOtroPlenoTag}</div>`;
       } else if(BLOQUEADO){
+        // Comprobado ANTES que el selector "apostar por otro": si el bloqueo llega mientras el
+        // selector está abierto (ej. un poll en directo re-renderiza a mitad de elegir goles),
+        // tiene que colapsar a "Bloqueada" en vez de quedarse las opciones abiertas y muertas.
+        if(_porOtroPlenoSel&&_porOtroPlenoSel.entityId===ent.id) _porOtroPlenoSel=null;
         aBadge=`<div style="display:flex;align-items:center;justify-content:center;height:30px;min-width:60px;flex-shrink:0;margin-left:auto;gap:3px;"><i class="ti ti-lock" style="font-size:12px;color:var(--text-ter);" aria-hidden="true"></i><span style="font-size:11px;color:var(--text-ter);">Bloqueada</span></div>`;
       } else if(!isMe && !isMePar && ADMINS.includes(p.id)){
         // Mismo criterio que las casillas normales: apostar por otro queda solo para admins.
-        aBadge=`<button onclick="event.stopPropagation();_porOtroPlenoSel={entityId:'${ent.id}',l:null,v:null};renderJornada();" style="font-size:10px;line-height:1.3;color:var(--blue);background:none;border:none;cursor:pointer;flex-shrink:0;white-space:nowrap;margin-left:auto;">Apostar<br>por otro</button>`;
+        if(_porOtroPlenoSel&&_porOtroPlenoSel.entityId===ent.id){
+          // Selección en dos pasos: goles del local, luego del visitante — se guarda en cuanto
+          // están los dos elegidos.
+          const sel=_porOtroPlenoSel;
+          const golOpts=['0','1','2','M'];
+          const filaGoles=(campo)=>golOpts.map(g=>`<button class="ap-btn" style="height:24px;min-width:22px;font-size:11px;padding:0;${sel[campo]===g?'background:var(--blue);color:#fff;':''}" onclick="_porOtroPlenoSel.${campo}='${g}';renderJornada();">${g}</button>`).join('');
+          aBadge=`<div style="display:flex;flex-direction:column;gap:3px;flex-shrink:0;margin-left:auto;align-items:flex-end;" onclick="event.stopPropagation()">
+            <div style="display:flex;gap:2px;">${filaGoles('l')}</div>
+            <div style="display:flex;gap:2px;">${filaGoles('v')}</div>
+            <div style="display:flex;gap:6px;margin-top:2px;">
+              ${sel.l&&sel.v?`<button onclick="apostarPlenoPorOtro('${ent.id}','${sel.l}','${sel.v}')" style="font-size:10px;font-weight:700;color:var(--green-text);background:none;border:none;cursor:pointer;">Guardar</button>`:''}
+              <button onclick="_porOtroPlenoSel=null;renderJornada();" style="font-size:10px;color:var(--text-ter);background:none;border:none;cursor:pointer;">Cancelar</button>
+            </div>
+          </div>`;
+        } else {
+          aBadge=`<button onclick="event.stopPropagation();_porOtroPlenoSel={entityId:'${ent.id}',l:null,v:null};renderJornada();" style="font-size:10px;line-height:1.3;color:var(--blue);background:none;border:none;cursor:pointer;flex-shrink:0;white-space:nowrap;margin-left:auto;">Apostar<br>por otro</button>`;
+        }
       } else {
         aBadge=`<span style="display:inline-flex;align-items:center;justify-content:center;height:30px;width:44px;font-size:16px;color:var(--text-ter);flex-shrink:0;margin-left:auto;">—</span>`;
       }
@@ -2027,14 +2056,14 @@ function calcPuntos(j){
     const ptPar=partidosJ[posPar-1];
     if(ptInd){
       if(ptInd.pleno){
-        n+=puntosPleno(ptInd, ap['pleno_'+p.id], false);
+        if(!ap['_por_'+p.id]) n+=puntosPleno(ptInd, ap['pleno_'+p.id], false);
       } else if(ptInd.c&&ptInd.r&&ap[p.id]!==undefined&&!ap['_por_'+p.id]){
         if(ap[p.id]===ptInd.r) n++;
       }
     }
     if(ptPar){
       if(ptPar.pleno){
-        n+=puntosPleno(ptPar, ap['pleno_'+p.p], true);
+        if(!ap['_por_'+p.p]) n+=puntosPleno(ptPar, ap['pleno_'+p.p], true);
       } else if(ptPar.c&&ptPar.r&&ap[p.p]!==undefined&&!ap['_por_'+p.p]){
         if(ap[p.p]===ptPar.r) n+=0.5;
       }
