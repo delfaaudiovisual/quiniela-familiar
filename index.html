@@ -865,9 +865,10 @@ async function loadAllApuestasFromDB(){
   try {
     const supa = getSupa();
     // Load ALL apuestas for all jornadas at once
-    const [r1, r2] = await Promise.all([
+    const [r1, r2, r3] = await Promise.all([
       supa.from('apuestas').select('*'),
       supa.from('apuestas_pleno').select('*'),
+      supa.from('apuestas_doble').select('*'),
     ]);
     // Reemplaza por completo (no solo añade) — así se limpian jornadas viejas que ya no
     // existen en la BD (ej. las del Mundial, borradas en el reset de temporada) pero que
@@ -883,6 +884,14 @@ async function loadAllApuestasFromDB(){
       if(!nuevo[row.jornada]) nuevo[row.jornada] = {};
       nuevo[row.jornada]['pleno_'+row.pareja_id] = {l: row.goles_local, v: row.goles_visitante};
       if(PP[row.pareja_id]) nuevo[row.jornada]['_guardada_'+row.pareja_id] = true;
+    });
+    // Sin esto, calcPuntos() de cualquier jornada que no fuera la activa perdía el ajuste del
+    // Doble (+1/-0,5) en cuanto se recargaba la app — loadAllApuestasFromDB() reemplaza TODO
+    // S.apuestas de golpe, y hasta ahora nunca traía el doble histórico, solo el de la jornada
+    // activa (vía loadDobleFromDB). Por eso a Mari le desaparecía el -0,5 de jornadas pasadas.
+    if(r3.data) r3.data.forEach(row => {
+      if(!nuevo[row.jornada]) nuevo[row.jornada] = {};
+      nuevo[row.jornada].doble = {jugador_id: row.jugador_id, casilla: row.casilla, apuesta: row.apuesta};
     });
     S.apuestas = nuevo;
     save();
