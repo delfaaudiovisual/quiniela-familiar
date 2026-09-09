@@ -319,6 +319,10 @@ const PP={
   p5:{id:'p5',n:'Deborah & Ivan',       m:['deborah','ivan']},
 };
 const ORDEN0=['javier','mari','felix','nines','daniel','jonathan','ivan','virginia','alexander','deborah','p1','p2','p3','p4','p5'];
+// Admins: pueden confirmar abrir/saltar jornada, apostar por otro, y ven el resumen de admin.
+// TEMPORAL: 'daniel' añadido para no depender solo de Felix mientras se resuelve el bug de hoy —
+// quitarlo cuando esté solucionado (coincide con ADMINS en cron-resultados y quick-task).
+const ADMINS=['felix','daniel'];
 const PARTIDOS=[
   {l:'?', v:'?', r:null, c:false},
   {l:'?', v:'?', r:null, c:false},
@@ -1019,9 +1023,9 @@ async function continuarLogin(pid){
   // Registrar notificaciones en segundo plano
   registrarNotificaciones(pid);
 
-  // Si Felix entra y hay una jornada esperando su confirmación (abrir/saltar), se le muestra
-  // esa pantalla antes que nada — solo él la ve.
-  if(pid==='felix'){
+  // Si un admin entra y hay una jornada esperando confirmación (abrir/saltar), se le muestra
+  // esa pantalla antes que nada — solo los admins la ven.
+  if(ADMINS.includes(pid)){
     const pendiente = await getJornadaPendienteConfirmacion();
     if(pendiente!=null){ await renderConfirmarJornada(pendiente); return; }
   }
@@ -1093,7 +1097,7 @@ async function renderConfirmarJornada(jornadaPendiente){
 
 async function confirmarJornada(accion){
   const p=jugador(S.player);
-  if(!p||p.id!=='felix') return;
+  if(!p||!ADMINS.includes(p.id)) return;
   document.getElementById('tab-jornada').innerHTML='<div style="text-align:center;padding:80px 20px;"><img src="icon.png" style="width:64px;height:64px;border-radius:16px;animation:pulse-logo 1.3s ease-in-out infinite;"><p style="margin-top:14px;font-size:14px;color:var(--text-sec);">Aplicando...</p></div>';
   try {
     const res=await fetch(`${SUPA_FUNCTIONS_URL}/quick-task`, {
@@ -1740,8 +1744,8 @@ function renderGlobalTable(p,ap){
       } else if(BLOQUEADO){
         // Bloqueada y sin apuesta — ya no tiene sentido ofrecer "apostar por otro" (el plazo pasó)
         aBadge=`<div style="display:flex;align-items:center;justify-content:center;height:30px;min-width:60px;flex-shrink:0;margin-left:auto;gap:3px;"><i class="ti ti-lock" style="font-size:12px;color:var(--text-ter);" aria-hidden="true"></i><span style="font-size:11px;color:var(--text-ter);">Bloqueada</span></div>`;
-      } else if(!isMe && !isMePar && p.id==='felix'){
-        // Cada uno apuesta por sí mismo — "apostar por otro" queda solo para Felix como admin,
+      } else if(!isMe && !isMePar && ADMINS.includes(p.id)){
+        // Cada uno apuesta por sí mismo — "apostar por otro" queda solo para admins,
         // por si hace falta de verdad (ej. alguien no puede acceder a la app).
         aBadge = _porOtroSel===ent.id
           ? `<div style="display:flex;gap:4px;flex-shrink:0;margin-left:auto;" onclick="event.stopPropagation()">
@@ -2294,7 +2298,7 @@ function renderYo(){
 
   if(!hayHistorial) h+=`<div style="text-align:center;padding:24px;color:var(--text-ter);"><i class="ti ti-history" style="font-size:32px;display:block;margin-bottom:8px;"></i><p style="font-size:14px;">Aún no hay apuestas registradas</p></div>`;
 
-  if(p.id==='felix') h+=renderResumenFelix();
+  if(ADMINS.includes(p.id)) h+=renderResumenFelix();
 
   h+=notifBotonHtml();
 
