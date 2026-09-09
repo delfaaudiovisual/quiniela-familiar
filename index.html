@@ -958,6 +958,23 @@ async function apostarPorOtro(entityId, signo){
   comprobarTodosApostaron();
 }
 
+// Igual que apostarPorOtro pero para el Pleno al 15 — necesita los dos tramos de goles (local y
+// visitante), no un signo 1/X/2, así que el flujo de selección es de dos pasos (ver
+// _porOtroPlenoSel en renderGlobalTable).
+async function apostarPlenoPorOtro(entityId, golesLocal, golesVisitante){
+  const p=jugador(S.player);
+  if(!p||BLOQUEADO||!golesLocal||!golesVisitante) return;
+  const key='pleno_'+entityId;
+  if(!S.apuestas[JORNADA]) S.apuestas[JORNADA]={};
+  S.apuestas[JORNADA][key]={l:golesLocal, v:golesVisitante};
+  if(PP[entityId]) S.apuestas[JORNADA]['_guardada_'+entityId]=true;
+  save();
+  await savePlenoApuesta(JORNADA, entityId, golesLocal, golesVisitante);
+  _porOtroPlenoSel=null;
+  renderJornada();
+  comprobarTodosApostaron();
+}
+
 async function savePlenoApuesta(jornada, parejaId, golesLocal, golesVisitante){
   try {
     const supa = getSupa();
@@ -1409,6 +1426,7 @@ function todosApostadoLocal(jornada){
 
 let _dobleSel=null;
 let _porOtroSel=null; // entidad para la que se está mostrando el selector "apostar por otro"
+let _porOtroPlenoSel=null; // {entityId,l,v} — selector de dos pasos para "apostar por otro" en el Pleno al 15
 function elegirCasillaDoble(pos){
   const orden=getOrden(JORNADA_ACTUAL);
   const ownerId=orden[pos-1];
@@ -1743,8 +1761,25 @@ function renderGlobalTable(p,ap){
           pBorder=ok?'var(--green-text)':'var(--red-text)';
         }
         aBadge=`<span style="display:inline-flex;align-items:center;justify-content:center;height:30px;min-width:52px;font-size:13px;font-weight:800;border-radius:6px;background:${pBg};color:${pColor};border:1.5px solid ${pBorder};flex-shrink:0;margin-left:auto;">${pap.l}-${pap.v}</span>`;
+      } else if(_porOtroPlenoSel&&_porOtroPlenoSel.entityId===ent.id){
+        // Selección en dos pasos: goles del local, luego del visitante — se guarda en cuanto
+        // están los dos elegidos.
+        const sel=_porOtroPlenoSel;
+        const golOpts=['0','1','2','M'];
+        const filaGoles=(campo)=>golOpts.map(g=>`<button class="ap-btn" style="height:24px;min-width:22px;font-size:11px;padding:0;${sel[campo]===g?'background:var(--blue);color:#fff;':''}" onclick="_porOtroPlenoSel.${campo}='${g}';renderJornada();">${g}</button>`).join('');
+        aBadge=`<div style="display:flex;flex-direction:column;gap:3px;flex-shrink:0;margin-left:auto;align-items:flex-end;" onclick="event.stopPropagation()">
+          <div style="display:flex;gap:2px;">${filaGoles('l')}</div>
+          <div style="display:flex;gap:2px;">${filaGoles('v')}</div>
+          <div style="display:flex;gap:6px;margin-top:2px;">
+            ${sel.l&&sel.v?`<button onclick="apostarPlenoPorOtro('${ent.id}','${sel.l}','${sel.v}')" style="font-size:10px;font-weight:700;color:var(--green-text);background:none;border:none;cursor:pointer;">Guardar</button>`:''}
+            <button onclick="_porOtroPlenoSel=null;renderJornada();" style="font-size:10px;color:var(--text-ter);background:none;border:none;cursor:pointer;">Cancelar</button>
+          </div>
+        </div>`;
       } else if(BLOQUEADO){
         aBadge=`<div style="display:flex;align-items:center;justify-content:center;height:30px;min-width:60px;flex-shrink:0;margin-left:auto;gap:3px;"><i class="ti ti-lock" style="font-size:12px;color:var(--text-ter);" aria-hidden="true"></i><span style="font-size:11px;color:var(--text-ter);">Bloqueada</span></div>`;
+      } else if(!isMe && !isMePar && ADMINS.includes(p.id)){
+        // Mismo criterio que las casillas normales: apostar por otro queda solo para admins.
+        aBadge=`<button onclick="event.stopPropagation();_porOtroPlenoSel={entityId:'${ent.id}',l:null,v:null};renderJornada();" style="font-size:10px;line-height:1.3;color:var(--blue);background:none;border:none;cursor:pointer;flex-shrink:0;white-space:nowrap;margin-left:auto;">Apostar<br>por otro</button>`;
       } else {
         aBadge=`<span style="display:inline-flex;align-items:center;justify-content:center;height:30px;width:44px;font-size:16px;color:var(--text-ter);flex-shrink:0;margin-left:auto;">—</span>`;
       }
