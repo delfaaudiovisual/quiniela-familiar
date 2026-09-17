@@ -524,16 +524,21 @@ const VAPID_PUBLIC_KEY_CLIENT = 'BOcgq11GFtEd1KLb3GUs1TsJHfqWt91nBOr0VHgSkBRn2UG
 // para que sea el usuario quien decida cuándo recargar, en vez de recargarle la pantalla a lo tonto.
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.addEventListener('message', (e) => {
-    if (e.data?.type === 'novedades-disponibles') mostrarBannerActualizar();
+    if (e.data?.type === 'novedades-disponibles') mostrarBannerActualizar(e.data.url);
   });
 }
-function mostrarBannerActualizar(){
+function mostrarBannerActualizar(url){
   if (document.getElementById('banner-actualizar')) return;
+  // Navegamos a la url que traía la notificación (con su ?novedades=1 si lo lleva) en vez de un
+  // reload a secas, para que al recargar se vuelva a evaluar si toca carrusel o el mensaje de
+  // "ya la habías visto" — un reload normal se quedaría con la url actual, sin ese parámetro.
+  const destino = url || location.pathname;
   const b = document.createElement('div');
   b.id = 'banner-actualizar';
   b.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:300;background:var(--blue);color:#fff;padding:12px 16px;display:flex;align-items:center;justify-content:center;gap:12px;font-size:14px;font-weight:700;box-shadow:0 2px 10px rgba(0,0,0,0.2);';
-  b.innerHTML = `<span>🎉 Hay novedades en la app</span><button onclick="location.reload()" style="background:#fff;color:var(--blue);border:none;border-radius:8px;padding:6px 14px;font-weight:800;font-size:13px;cursor:pointer;">Actualizar</button>`;
+  b.innerHTML = `<span>🎉 Hay novedades en la app</span><button id="btn-banner-actualizar" style="background:#fff;color:var(--blue);border:none;border-radius:8px;padding:6px 14px;font-weight:800;font-size:13px;cursor:pointer;">Actualizar</button>`;
   document.body.prepend(b);
+  document.getElementById('btn-banner-actualizar').onclick = () => { location.href = destino; };
 }
 
 function urlBase64ToUint8Array(base64String) {
@@ -2363,10 +2368,27 @@ const NOVEDADES = [
 const NOVEDADES_VERSION = 'v1';
 function mostrarNovedadesSiToca(){
   try {
-    if (localStorage.getItem('novedades_vistas') === NOVEDADES_VERSION) return;
+    // Si viene del push "hay novedades" (?novedades=1) pero esta persona ya las había visto
+    // (p.ej. entró por su cuenta antes de que mandáramos el aviso), no tiene sentido repetirle
+    // el carrusel — mejor un mensaje simpático reconociendo que ya iba por delante.
+    const params = new URLSearchParams(location.search);
+    const vieneDeNotifNovedades = params.get('novedades') === '1';
+    if (vieneDeNotifNovedades) history.replaceState(null, '', location.pathname);
+
+    if (localStorage.getItem('novedades_vistas') === NOVEDADES_VERSION) {
+      if (vieneDeNotifNovedades) mostrarToastYaVistoNovedades();
+      return;
+    }
     abrirModalNovedades();
     localStorage.setItem('novedades_vistas', NOVEDADES_VERSION);
   } catch(e) { console.warn('Error mostrando novedades:', e); }
+}
+function mostrarToastYaVistoNovedades(){
+  const toast=document.createElement('div');
+  toast.innerHTML='⚡ ¡Eres rápido! Ya habías visto las novedades. ¡Mucha suerte esta jornada! 🍀';
+  toast.style.cssText='position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:#1a2550;color:white;padding:12px 20px;border-radius:12px;font-size:14px;font-weight:600;z-index:9999;text-align:center;max-width:300px;box-shadow:0 4px 20px rgba(0,0,0,0.3);';
+  document.body.appendChild(toast);
+  setTimeout(()=>toast.remove(), 4500);
 }
 let _novedadIdx=0;
 function abrirModalNovedades(){

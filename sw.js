@@ -38,16 +38,18 @@ self.addEventListener('notificationclick', (e) => {
 
   e.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      // If app is already open, focus it and tell it a new push arrived — since focusing does NOT
-      // reload the page, the JS still running there needs to know to offer a manual "Actualizar"
-      // (the fresh index.html only loads if we actually open a new window, below).
-      for (const client of clientList) {
-        if (client.url === url && 'focus' in client) {
-          client.postMessage({ type: 'novedades-disponibles' });
-          return client.focus();
-        }
+      // Si la app ya está abierta, la enfocamos en vez de abrir otra — buscamos coincidencia
+      // exacta de url primero y si no, cualquier ventana abierta (la url del push puede llevar
+      // un ?parametro que la pestaña ya abierta no tiene en su barra de direcciones).
+      const client = clientList.find((c) => c.url === url) || clientList[0];
+      if (client && 'focus' in client) {
+        // Enfocar NO recarga la página, así que el JS que ya está corriendo ahí no se entera del
+        // nuevo push por sí solo — solo avisamos por mensaje para el aviso de "hay novedades"
+        // (con su ?novedades=1), no para el resto de notificaciones normales de la app.
+        if (url.includes('novedades=1')) client.postMessage({ type: 'novedades-disponibles', url });
+        return client.focus();
       }
-      // Otherwise open new window — this already fetches the fresh index.html
+      // Si no hay ninguna ventana abierta, se abre una nueva — esa ya carga el index.html fresco.
       if (clients.openWindow) return clients.openWindow(url);
     })
   );
