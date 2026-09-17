@@ -821,6 +821,8 @@ async function cargarJornadaLoterías(modo='auto'){
         PARTIDOS[i].r = data.partidos[i].r || null;
         PARTIDOS[i].c = data.partidos[i].c || false;
         PARTIDOS[i].marcador = data.partidos[i].marcador || null;
+        PARTIDOS[i].dia = data.partidos[i].dia || null;
+        PARTIDOS[i].hora = data.partidos[i].hora || null;
         if(data.partidos[i].pleno) PARTIDOS[i].pleno = true;
         if(data.partidos[i].plenoResultado) PARTIDOS[i].plenoResultado = data.partidos[i].plenoResultado;
       }
@@ -1126,7 +1128,7 @@ async function renderConfirmarJornada(jornadaPendiente){
     }
     previaHtml+=`<div class="card" style="text-align:left;padding:14px 16px;margin-bottom:14px;">
       <p class="sec-label" style="margin-bottom:8px;">Partidos de la jornada ${siguiente}</p>
-      ${regulares.map((pt,i)=>`<p style="font-size:13px;color:var(--text);padding:5px 0;border-bottom:0.5px solid var(--border-light);">${i+1}. ${pt.l} — ${pt.v}${pt.dia?` <span style="color:var(--text-ter);font-size:11px;">(${pt.dia})</span>`:''}</p>`).join('')}
+      ${regulares.map((pt,i)=>`<p style="font-size:13px;color:var(--text);padding:5px 0;border-bottom:0.5px solid var(--border-light);">${i+1}. ${pt.l} — ${pt.v}${pt.dia?` <span style="color:var(--text-ter);font-size:11px;">(${pt.dia.charAt(0)+pt.dia.slice(1).toLowerCase()}${pt.hora?' '+pt.hora:''})</span>`:''}</p>`).join('')}
     </div>`;
   } else {
     previaHtml=`<div class="alert alert-info" style="text-align:left;margin-bottom:14px;"><i class="ti ti-info-circle"></i><p>No se pudo cargar la previa de partidos — puedes decidir igualmente.</p></div>`;
@@ -1889,6 +1891,7 @@ function renderGlobalTable(p,ap){
           ${editBtn}
         </p>
         <p style="font-size:12px;color:var(--text-sec);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${pos}. ${pt.pleno?'⭐ '+pt.l+' — '+pt.v:pt.l+' — '+pt.v}${marcadorHtml}</p>
+        ${!pt.c&&(pt.dia||pt.hora)?`<p style="font-size:10.5px;color:var(--text-ter);margin-top:1px;">${pt.dia?pt.dia.charAt(0)+pt.dia.slice(1).toLowerCase():''}${pt.dia&&pt.hora?' ':''}${pt.hora||''}</p>`:''}
       </div>
       ${aBadge}
     </div>`
