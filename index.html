@@ -2244,22 +2244,26 @@ function renderModalHistoricoJugador(playerId){
     .filter(j=>{ const ap=S.apuestas[j]||{}; return ap[jug.id]||ap[jug.p]; })
     .sort((a,b)=>b-a);
 
-  const OK='<span style="color:var(--green-text);font-weight:800;">✅</span>';
-  const FAIL='<span style="color:var(--red-text);font-weight:800;">❌</span>';
+  const OK='<span style="color:var(--green-text);font-weight:800;">✓</span>';
+  const FAIL='<span style="color:var(--red-text);font-weight:800;">✗</span>';
   const PEND='<span style="color:var(--text-ter);">⏳</span>';
-  const SINAP='<span style="color:var(--text-ter);">no apostó</span>';
+  const SINAP='<span style="color:var(--text-ter);">—</span>';
 
-  // Pleno al 15: además de acierto/fallo, importa ver el marcador que se jugó (y el real si
-  // falló) — un simple ✅/❌ no cuenta la historia completa de una apuesta a marcador exacto.
+  // El Pleno al 15 puntúa en DOS pasos, no es acierto/fallo simple: acertar el signo (quién gana
+  // o empate) ya vale por sí solo, y acertar además el marcador exacto suma un punto extra. Así
+  // que se marca con dos símbolos — ✓✓ si aciertas las dos cosas, ✓✗ si solo el signo, y un ✗
+  // suelto si fallas hasta el signo (ahí no hay ningún punto, ni siquiera parcial).
   const estadoCasilla=(ap,entityId,pt)=>{
     if(!pt) return SINAP;
     if(pt.pleno){
       const pk=ap['pleno_'+entityId]||{};
       if(!pk.l||!pk.v) return SINAP;
-      if(!pt.c||!pt.marcador) return `⭐ ${pk.l}-${pk.v} ${PEND}`;
+      if(!pt.c||!pt.marcador) return `⭐${PEND}`;
       const [gl,gv]=pt.marcador.replace(' 🔴','').split('-');
-      const acierto=plenoExacto(pk,gl,gv);
-      return `⭐ ${pk.l}-${pk.v} ${acierto?OK:FAIL}${acierto?'':` <span style="color:var(--text-ter);">(real ${gl}-${gv})</span>`}`;
+      const signoReal=signoFromScore(parseInt(gl),parseInt(gv));
+      const signoApostado=valorBucket(pk.l)>valorBucket(pk.v)?'1':valorBucket(pk.l)===valorBucket(pk.v)?'X':'2';
+      if(signoApostado!==signoReal) return `⭐${FAIL}`;
+      return `⭐${OK}${plenoExacto(pk,gl,gv)?OK:FAIL}`;
     }
     const a=ap[entityId];
     if(!a) return SINAP;
@@ -2277,7 +2281,7 @@ function renderModalHistoricoJugador(playerId){
     const estPar=estadoCasilla(ap,jug.p,ptPar);
 
     // El Doble no es un simple acierto/fallo: suma +1 si acierta pero RESTA -0.5 si falla, así
-    // que hay que verlo como puntos con signo, no como un ✅/❌ más — si no, no se distingue de
+    // que hay que verlo como puntos con signo, no como un ✓/✗ más — si no, no se distingue de
     // un fallo normal que no penaliza.
     let dobleTxt='';
     const dobleAp=ap.doble;
@@ -2285,22 +2289,21 @@ function renderModalHistoricoJugador(playerId){
       const ptDoble=partidosJ[dobleAp.casilla-1];
       if(ptDoble&&ptDoble.c&&ptDoble.r){
         const acierto=dobleAp.apuesta===ptDoble.r;
-        dobleTxt=` · <span style="font-weight:800;color:${acierto?'var(--green-text)':'var(--red-text)'};">🎯${acierto?'+1':'−0.5'}</span>`;
+        dobleTxt=` <span style="font-weight:800;color:${acierto?'var(--green-text)':'var(--red-text)'};">🎯${acierto?'+1':'−0.5'}</span>`;
       } else {
-        dobleTxt=` · 🎯 ${PEND}`;
+        dobleTxt=' 🎯'+PEND;
       }
     }
 
     const pts=calcPuntos(j)[jug.id]||0;
     const ptsColor=pts>0?'var(--green-text)':pts<0?'var(--red-text)':'var(--text-sec)';
 
-    filas+=`<div style="padding:8px 0;border-bottom:0.5px solid var(--border-light);font-size:12.5px;">
-      <div style="display:flex;align-items:center;gap:8px;">
-        <span style="color:var(--text-ter);width:28px;flex-shrink:0;font-weight:600;">J${j}</span>
-        <span style="flex:1;color:var(--text);min-width:0;">Indiv ${estInd}</span>
-        <span style="font-weight:700;color:${ptsColor};flex-shrink:0;">${pts>0?'+':''}${pts} pts</span>
-      </div>
-      <div style="padding-left:36px;color:var(--text);margin-top:2px;">Pareja ${estPar}${dobleTxt}</div>
+    filas+=`<div style="display:flex;align-items:center;gap:6px;padding:6px 0;border-bottom:0.5px solid var(--border-light);font-size:12px;white-space:nowrap;overflow-x:auto;">
+      <span style="color:var(--text-ter);width:22px;flex-shrink:0;font-weight:700;">J${j}</span>
+      <span style="color:var(--text);flex-shrink:0;">Indiv ${estInd}</span>
+      <span style="color:var(--text);flex-shrink:0;">· Pareja ${estPar}</span>
+      <span style="flex-shrink:0;">${dobleTxt}</span>
+      <span style="margin-left:auto;padding-left:6px;font-weight:800;color:${ptsColor};flex-shrink:0;">${pts>0?'+':''}${pts}</span>
     </div>`;
   });
 
