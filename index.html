@@ -98,6 +98,8 @@
   .topbar{padding:12px 16px 8px;background:var(--bg);position:sticky;top:0;z-index:50;}
   @keyframes spin{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
   @keyframes pulse-logo{0%,100%{transform:scale(1);opacity:1;}50%{transform:scale(0.92);opacity:0.7;}}
+  @keyframes novedadTap{0%{r:8;stroke-width:7;opacity:0.9;}80%{opacity:0;}100%{r:60;stroke-width:1;opacity:0;}}
+  @keyframes novedadDedo{0%,100%{opacity:0;}8%{opacity:1;}22%{opacity:1;}32%{opacity:0;}}
   .splash-icon{width:80px;height:80px;border-radius:50%;background:var(--blue-bg);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;}
   .help-step{display:flex;gap:14px;padding:14px 0;border-bottom:0.5px solid var(--border-light);}
   .help-step:last-child{border-bottom:none;}
@@ -516,6 +518,23 @@ async function cambiarJornada(j){
 
 // ============ NOTIFICACIONES PUSH ============
 const VAPID_PUBLIC_KEY_CLIENT = 'BOcgq11GFtEd1KLb3GUs1TsJHfqWt91nBOr0VHgSkBRn2UGqL4szNLI6sIy3HVb0VVSoqy_zess9HuMYXMuzONA';
+
+// Si la app ya está abierta cuando llega el push de "hay novedades", el sw.js solo la enfoca
+// (no recarga JS/HTML solo) — así que le pedimos que nos avise por mensaje y mostramos un banner
+// para que sea el usuario quien decida cuándo recargar, en vez de recargarle la pantalla a lo tonto.
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('message', (e) => {
+    if (e.data?.type === 'novedades-disponibles') mostrarBannerActualizar();
+  });
+}
+function mostrarBannerActualizar(){
+  if (document.getElementById('banner-actualizar')) return;
+  const b = document.createElement('div');
+  b.id = 'banner-actualizar';
+  b.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:300;background:var(--blue);color:#fff;padding:12px 16px;display:flex;align-items:center;justify-content:center;gap:12px;font-size:14px;font-weight:700;box-shadow:0 2px 10px rgba(0,0,0,0.2);';
+  b.innerHTML = `<span>🎉 Hay novedades en la app</span><button onclick="location.reload()" style="background:#fff;color:var(--blue);border:none;border-radius:8px;padding:6px 14px;font-weight:800;font-size:13px;cursor:pointer;">Actualizar</button>`;
+  document.body.prepend(b);
+}
 
 function urlBase64ToUint8Array(base64String) {
   const padding = '='.repeat((4 - base64String.length % 4) % 4);
@@ -1079,6 +1098,7 @@ async function continuarLogin(pid){
     if(pendiente!=null){ await renderConfirmarJornada(pendiente); return; }
   }
   navTo('jornada');
+  mostrarNovedadesSiToca();
 }
 
 async function getJornadaPendienteConfirmacion(){
@@ -2320,6 +2340,113 @@ function renderModalHistoricoJugador(playerId){
     <div style="max-height:60vh;overflow-y:auto;">${filas}</div>
     <button onclick="cerrarModalHistoricoJugador()" class="btn-ghost" style="width:100%;text-align:center;margin-top:10px;">Cerrar</button>
   </div>`;
+}
+
+// ---- Carrusel de novedades: se abre solo una vez por NOVEDADES_VERSION (ver mostrarNovedadesSiToca) ----
+const NOVEDADES = [
+  { emoji:'🎯', color:'var(--purple-text)', bg:'var(--purple-bg)', titulo:'¿Quién pone el Doble esta semana?',
+    texto:'Ahora lo ves de un vistazo: al lado del nombre de quien le toca sale un 🎯. Si acierta el signo contrario suma <b>+1</b>, si falla resta <b>−0,5</b>.',
+    img:'images/novedad-doble.png' },
+  { emoji:'📅', color:'var(--blue-text)', bg:'var(--blue-bg)', titulo:'¿Cuándo juega tu partido?',
+    texto:'Debajo de cada partido en "Apuestas de todos" ahora sale el día y la hora — así sabes justo cuándo mirar si ya hay resultado.',
+    img:'images/novedad-doble.png' },
+  { emoji:'🏆', color:'var(--orange-text)', bg:'var(--orange-bg)', titulo:'¿Por qué tiene tantos puntos?',
+    texto:'Pincha en la card de cualquiera en el Ranking y se abre su histórico completo, jornada a jornada: individual, pareja, el Doble, el Pleno... todo con sus puntos.',
+    img:'images/novedad-historico.png' },
+  { emoji:'📸', color:'var(--teal-text)', bg:'var(--teal-bg)', titulo:'Presume de la clasificación',
+    texto:'En la pestaña Ranking hay un botón "Guardar en fotos" que te descarga una imagen chula del podio, lista para mandar al grupo.',
+    img:'images/novedad-compartir.png', img2:'images/novedad-compartir-export.png', marcaBoton:true },
+];
+// Se muestra una sola vez por versión de contenido del carrusel — independiente de APP_VERSION
+// (que fuerza limpiar TODO el caché) porque futuras novedades no necesitan volver a bajarse todos
+// los datos, solo que se vuelva a enseñar el carrusel.
+const NOVEDADES_VERSION = 'v1';
+function mostrarNovedadesSiToca(){
+  try {
+    if (localStorage.getItem('novedades_vistas') === NOVEDADES_VERSION) return;
+    abrirModalNovedades();
+    localStorage.setItem('novedades_vistas', NOVEDADES_VERSION);
+  } catch(e) { console.warn('Error mostrando novedades:', e); }
+}
+let _novedadIdx=0;
+function abrirModalNovedades(){
+  let modal=document.getElementById('modal-novedades');
+  if(!modal){
+    modal=document.createElement('div');
+    modal.id='modal-novedades';
+    modal.className='modal-overlay';
+    document.body.appendChild(modal);
+  }
+  _novedadIdx=0;
+  renderModalNovedades();
+  modal.style.display='flex';
+}
+function cerrarModalNovedades(){
+  const modal=document.getElementById('modal-novedades');
+  if(modal) modal.style.display='none';
+}
+function irANovedad(delta){
+  _novedadIdx=Math.max(0,Math.min(NOVEDADES.length-1,_novedadIdx+delta));
+  renderModalNovedades();
+}
+function renderModalNovedades(){
+  const modal=document.getElementById('modal-novedades');
+  if(!modal) return;
+  const n=NOVEDADES[_novedadIdx];
+  const esUltima=_novedadIdx===NOVEDADES.length-1;
+  const dots=NOVEDADES.map((_,i)=>`<span style="width:${i===_novedadIdx?18:6}px;height:6px;border-radius:3px;background:${i===_novedadIdx?'var(--blue)':'var(--border)'};transition:width .2s;"></span>`).join('');
+  modal.innerHTML=`<div class="modal-sheet" style="padding-top:18px;">
+    <div style="display:flex;justify-content:flex-end;margin-bottom:4px;">
+      <button onclick="cerrarModalNovedades()" style="background:none;border:none;color:var(--text-ter);font-size:13px;cursor:pointer;padding:4px 6px;">Saltar</button>
+    </div>
+    <p style="text-align:center;font-size:12px;font-weight:700;color:var(--text-ter);letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;">Novedades en La Piripiniela</p>
+    <div style="width:60px;height:60px;border-radius:18px;background:${n.bg};display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">
+      <span style="font-size:30px;">${n.emoji}</span>
+    </div>
+    <p style="text-align:center;font-size:18px;font-weight:800;color:${n.color};margin-bottom:8px;padding:0 8px;">${n.titulo}</p>
+    <p style="text-align:center;font-size:14px;color:var(--text);line-height:1.5;margin-bottom:16px;padding:0 6px;">${n.texto}</p>
+    ${n.img2?`<div id="novedad-imgwrap" style="position:relative;border-radius:var(--radius-sm);overflow:hidden;border:0.5px solid var(--border);margin-bottom:18px;box-shadow:var(--shadow);transition:height .6s ease;">
+      <img id="novedad-img1" src="${n.img}" style="display:block;width:100%;position:absolute;top:0;left:0;z-index:1;transition:opacity .6s ease;">
+      ${n.marcaBoton?`<svg id="novedad-highlight" viewBox="0 0 736 420" style="position:absolute;top:0;left:0;width:100%;height:100%;z-index:2;pointer-events:none;transition:opacity .6s ease;">
+        <ellipse cx="368" cy="208" rx="322" ry="42" fill="none" stroke="#FF3B30" stroke-width="7" stroke-linecap="round" transform="rotate(-2 368 208)" opacity="0.92"/>
+        <ellipse cx="372" cy="212" rx="300" ry="35" fill="none" stroke="#FF3B30" stroke-width="4" stroke-linecap="round" transform="rotate(1.5 372 212)" opacity="0.55"/>
+        <circle cx="368" cy="210" r="9" fill="#FF3B30" style="animation:novedadDedo 1.4s ease-in-out 2;"/>
+        <circle cx="368" cy="210" r="8" fill="none" stroke="#FF3B30" style="animation:novedadTap 1.4s ease-out 2;"/>
+      </svg>`:''}
+      <img id="novedad-img2" src="${n.img2}" style="display:block;width:100%;position:absolute;top:0;left:0;z-index:3;opacity:0;transition:opacity .6s ease;">
+    </div>`
+    :n.img?`<div style="border-radius:var(--radius-sm);overflow:hidden;border:0.5px solid var(--border);margin-bottom:18px;box-shadow:var(--shadow);"><img src="${n.img}" style="display:block;width:100%;"></div>`:''}
+    <div style="display:flex;justify-content:center;gap:5px;align-items:center;margin-bottom:20px;">${dots}</div>
+    <div style="display:flex;gap:10px;">
+      ${_novedadIdx>0?`<button onclick="irANovedad(-1)" class="btn btn-secondary" style="flex:1;">Atrás</button>`:''}
+      <button onclick="${esUltima?'cerrarModalNovedades()':'irANovedad(1)'}" class="btn btn-primary" style="flex:2;">${esUltima?'¡Vale, a por todas! ⚽':'Siguiente'}</button>
+    </div>
+  </div>`;
+  // Anima la tarjeta con dos imágenes: resalta el botón un momento y luego funde a la imagen
+  // exportable — se captura el índice actual para no tocar el DOM si ya se cambió de tarjeta.
+  // Las dos imágenes van position:absolute (para poder cruzarse sin saltos), así que el propio
+  // contenedor no sabe su altura solo — se la damos a mano según la imagen que toque en cada
+  // momento, y como el contenedor tiene transition:height, el cambio también queda animado.
+  if(n.img2){
+    const idxAlAbrir=_novedadIdx;
+    const wrap=document.getElementById('novedad-imgwrap');
+    const img1=document.getElementById('novedad-img1');
+    const img2=document.getElementById('novedad-img2');
+    const alturaPara=(img)=>wrap.clientWidth*(img.naturalHeight/img.naturalWidth);
+    const fijarAlturaInicial=()=>{ if(wrap&&img1&&img1.naturalWidth) wrap.style.height=alturaPara(img1)+'px'; };
+    if(img1.complete) fijarAlturaInicial(); else img1.onload=fijarAlturaInicial;
+    setTimeout(()=>{
+      if(_novedadIdx!==idxAlAbrir||!wrap||!img2) return;
+      const cambiar=()=>{
+        wrap.style.height=alturaPara(img2)+'px';
+        img2.style.opacity='1';
+        img1.style.opacity='0';
+        const highlight=document.getElementById('novedad-highlight');
+        if(highlight) highlight.style.opacity='0';
+      };
+      if(img2.complete) cambiar(); else img2.onload=cambiar;
+    }, 1600);
+  }
 }
 
 // ============ HISTORICO ============

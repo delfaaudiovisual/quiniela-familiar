@@ -38,13 +38,16 @@ self.addEventListener('notificationclick', (e) => {
 
   e.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      // If app is already open, focus it
+      // If app is already open, focus it and tell it a new push arrived — since focusing does NOT
+      // reload the page, the JS still running there needs to know to offer a manual "Actualizar"
+      // (the fresh index.html only loads if we actually open a new window, below).
       for (const client of clientList) {
         if (client.url === url && 'focus' in client) {
+          client.postMessage({ type: 'novedades-disponibles' });
           return client.focus();
         }
       }
-      // Otherwise open new window
+      // Otherwise open new window — this already fetches the fresh index.html
       if (clients.openWindow) return clients.openWindow(url);
     })
   );
