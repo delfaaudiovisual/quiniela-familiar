@@ -2381,7 +2381,18 @@ function mostrarNovedadesSiToca(){
     }
     abrirModalNovedades();
     localStorage.setItem('novedades_vistas', NOVEDADES_VERSION);
+    marcarNovedadesVistasServidor();
   } catch(e) { console.warn('Error mostrando novedades:', e); }
+}
+// Además del flag local (por si se manda el push antes de que él la abra en otro dispositivo),
+// dejamos constancia en Supabase de quién ya vio esta versión del carrusel — así el aviso push de
+// "hay novedades" puede filtrar destinatarios y no molestar a quien ya se las sabe.
+async function marcarNovedadesVistasServidor(){
+  try {
+    await getSupa().from('jornada_estado').upsert({
+      jornada: 0, clave: `novedades_${NOVEDADES_VERSION}_${S.player}`, valor: 'true'
+    }, { onConflict: 'jornada,clave' });
+  } catch(e) { console.warn('Error marcando novedades vistas en servidor:', e); }
 }
 function mostrarToastYaVistoNovedades(){
   const toast=document.createElement('div');
