@@ -1767,6 +1767,9 @@ function renderGlobalTable(p,ap){
     const esCasillaDobleSeleccionando=!pt.pleno&&_dobleSel&&_dobleSel.casilla===pos;
     const esCasillaDobleElegible=!pt.pleno&&esMiTurnoDoble&&!prohibidasDoble.includes(pos)&&a&&['1','X','2'].includes(a)&&!esCasillaDobleSeleccionando;
     const isMiDoble=esCasillaDobleConfirmada&&dobleApActivo.jugador_id===p.id; // el doble que YO puse, se resalta como mi apuesta
+    // A quién le toca el Doble esta jornada — se marca junto a su nombre aunque todavía no lo
+    // haya puesto, para que se vea de un vistazo sin tener que saberse el orden de turnos.
+    const esTurnoDobleEnt=dobleIdActivo&&!dobleApActivo&&ent.id===dobleIdActivo;
 
     let aBadge='';
     if(pt.pleno){
@@ -1882,7 +1885,7 @@ function renderGlobalTable(p,ap){
       ${av}
       <div style="flex:1;min-width:0;overflow:hidden;">
         <p style="font-size:15px;font-weight:${isMe||isMePar||isMiDoble?700:600};color:${isMe?'var(--blue-text)':isMePar?'var(--teal-text)':isMiDoble?'var(--blue-text)':'var(--text)'};margin-bottom:3px;">
-          ${ent.n}${isMe?' 👈':''}${isMiDoble?' 🎯':''}${editing?' <span style="font-size:10px;font-weight:400;opacity:0.7;">editando...</span>':''}
+          ${ent.n}${isMe?' 👈':''}${isMiDoble?' 🎯':''}${esTurnoDobleEnt?' <span title="Le toca el Doble esta jornada">🎯</span>':''}${editing?' <span style="font-size:10px;font-weight:400;opacity:0.7;">editando...</span>':''}
           ${editBtn}
         </p>
         <p style="font-size:12px;color:var(--text-sec);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${pos}. ${pt.pleno?'⭐ '+pt.l+' — '+pt.v:pt.l+' — '+pt.v}${marcadorHtml}</p>
@@ -2102,12 +2105,20 @@ function renderRanking(){
   const sorted=[...JJ].sort((a,b)=>acum[b.id]-acum[a.id]);
   const ptsJornada=calcPuntos(JORNADA_ACTUAL);
 
+  // Posición compartida en empates (ranking "1224"): si dos van con los mismos puntos, van a la
+  // misma posición y el siguiente salta el hueco — nada de desempates inventados sin criterio.
+  const posiciones=[];
+  sorted.forEach((jj,i)=>{
+    posiciones.push(i>0&&acum[jj.id]===acum[sorted[i-1].id]?posiciones[i-1]:i+1);
+  });
+
   // Table rows
   let tableRows='';
   sorted.forEach((jj,i)=>{
     const isMe=jj.id===p.id;
-    const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':`${i+1}.`;
-    tableRows+=`<div class="card" style="display:flex;align-items:center;gap:12px;margin-bottom:8px;${isMe?'border:1.5px solid var(--blue);background:var(--blue-bg);':''}">
+    const pos=posiciones[i];
+    const medal=pos===1?'🥇':pos===2?'🥈':pos===3?'🥉':`${pos}.`;
+    tableRows+=`<div class="card" style="display:flex;align-items:center;gap:12px;margin-bottom:8px;cursor:pointer;${isMe?'border:1.5px solid var(--blue);background:var(--blue-bg);':''}" onclick="abrirHistoricoJugador('${jj.id}')">
       <span style="font-size:20px;width:28px;text-align:center;">${medal}</span>
       ${avHtml(jj,44)}
       <div style="flex:1;">
@@ -2130,15 +2141,17 @@ function renderRanking(){
   let podioHtml=`<div style="display:flex;align-items:flex-end;justify-content:center;gap:8px;margin:8px 0 20px;">`;
   top3.forEach((jj,i)=>{
     const realIdx=sorted.indexOf(jj);
+    const pos=posiciones[realIdx];
     const h=podioHeights[i];
     const color=podioColors[i];
     const size=podioSizes[i];
+    const medalEmoji=pos===1?'🥇':pos===2?'🥈':'🥉';
     podioHtml+=`<div style="display:flex;flex-direction:column;align-items:center;gap:6px;flex:1;">
       ${avHtml(jj,size)}
       <p style="font-size:${i===1?13:11}px;font-weight:700;color:white;text-align:center;">${jj.n}</p>
       <p style="font-size:${i===1?18:15}px;font-weight:800;color:${color};">${acum[jj.id]}</p>
       <div style="background:${color}22;border:1px solid ${color}44;border-radius:8px 8px 0 0;height:${h}px;width:100%;display:flex;align-items:center;justify-content:center;">
-        <span style="font-size:${i===1?28:22}px;">${i===0?'🥈':i===1?'🥇':'🥉'}</span>
+        <span style="font-size:${i===1?28:22}px;">${medalEmoji}</span>
       </div>
     </div>`;
   });
@@ -2147,7 +2160,7 @@ function renderRanking(){
   let cardRows=podioHtml;
   sorted.slice(3).forEach((jj,i)=>{
     cardRows+=`<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid rgba(255,255,255,0.07);">
-      <span style="font-size:13px;width:20px;text-align:center;color:rgba(255,255,255,0.4);">${i+4}</span>
+      <span style="font-size:13px;width:20px;text-align:center;color:rgba(255,255,255,0.4);">${posiciones[i+3]}</span>
       ${avHtml(jj,32)}
       <p style="font-size:13px;font-weight:500;color:white;flex:1;">${jj.n}</p>
       <p style="font-size:16px;font-weight:800;color:white;">${acum[jj.id]}<span style="font-size:10px;color:rgba(255,255,255,0.4);"> pts</span></p>
@@ -2178,6 +2191,110 @@ function renderRanking(){
   </div>`;
 
   document.getElementById('tab-ranking').innerHTML=h;
+}
+
+// ---- Histórico de un jugador (modal desde el ranking) ----
+async function abrirHistoricoJugador(playerId){
+  const jug=jugador(playerId);
+  if(!jug) return;
+  let modal=document.getElementById('modal-historico-jugador');
+  if(!modal){
+    modal=document.createElement('div');
+    modal.id='modal-historico-jugador';
+    modal.className='modal-overlay';
+    modal.onclick=(e)=>{ if(e.target===modal) cerrarModalHistoricoJugador(); };
+    document.body.appendChild(modal);
+  }
+  modal.innerHTML=`<div class="modal-sheet"><p style="text-align:center;padding:30px 0;color:var(--text-sec);">Cargando histórico...</p></div>`;
+  modal.style.display='flex';
+
+  if(!S.partidosHistorico) S.partidosHistorico={};
+  if(!S.partidosHistoricoCerrado) S.partidosHistoricoCerrado={};
+  const jornadasSinCargar=Object.keys(S.apuestas).map(Number)
+    .filter(j=>j!==JORNADA_ACTUAL&&!S.partidosHistoricoCerrado[j]&&(S.apuestas[j][jug.id]||S.apuestas[j][jug.p]));
+  for(const j of jornadasSinCargar){
+    try{
+      const res=await fetch(`${SUPA_FUNCTIONS_URL}/quiniela-jornada`,{
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':`Bearer ${ANON_KEY}`},
+        body:JSON.stringify({ jornadaHistorica: j })
+      });
+      if(res.ok){
+        const data=await res.json();
+        if(data.partidos&&data.partidos.length>=14){
+          S.partidosHistorico[j]=data.partidos;
+          if(data.partidos.every(pt=>pt.c)) S.partidosHistoricoCerrado[j]=true;
+        }
+      }
+    }catch(e){ console.warn('Error cargando jornada',j,e); }
+  }
+  if(jornadasSinCargar.length) save();
+  renderModalHistoricoJugador(playerId);
+}
+function cerrarModalHistoricoJugador(){
+  const modal=document.getElementById('modal-historico-jugador');
+  if(modal) modal.style.display='none';
+}
+function renderModalHistoricoJugador(playerId){
+  const jug=jugador(playerId);
+  const modal=document.getElementById('modal-historico-jugador');
+  if(!jug||!modal) return;
+
+  const jornadas=Object.keys(S.apuestas).map(Number)
+    .filter(j=>{ const ap=S.apuestas[j]||{}; return ap[jug.id]||ap[jug.p]; })
+    .sort((a,b)=>b-a);
+
+  const estadoCasilla=(ap,entityId,pt)=>{
+    if(!pt) return '—';
+    if(pt.pleno){
+      const pk=ap['pleno_'+entityId]||{};
+      if(!pk.l||!pk.v) return '—';
+      if(!pt.c||!pt.marcador) return '⭐⏳';
+      const [gl,gv]=pt.marcador.replace(' 🔴','').split('-');
+      return plenoExacto(pk,gl,gv)?'⭐✅':'⭐❌';
+    }
+    const a=ap[entityId];
+    if(!a) return '—';
+    if(!pt.c||!pt.r) return '⏳';
+    return a===pt.r?'✅':'❌';
+  };
+
+  let filas='';
+  jornadas.forEach(j=>{
+    const ap=S.apuestas[j]||{};
+    const partidosJ=j===JORNADA_ACTUAL?PARTIDOS:(S.partidosHistorico?.[j]||[]);
+    const ptInd=partidosJ[getPos(jug.id,j)-1];
+    const ptPar=partidosJ[getPos(jug.p,j)-1];
+    const estInd=estadoCasilla(ap,jug.id,ptInd);
+    const estPar=estadoCasilla(ap,jug.p,ptPar);
+
+    let dobleTxt='';
+    const dobleAp=ap.doble;
+    if(dobleAp&&dobleAp.jugador_id===jug.id){
+      const ptDoble=partidosJ[dobleAp.casilla-1];
+      dobleTxt=(ptDoble&&ptDoble.c&&ptDoble.r)?` · 🎯${dobleAp.apuesta===ptDoble.r?'✅':'❌'}`:' · 🎯⏳';
+    }
+
+    const pts=calcPuntos(j)[jug.id]||0;
+    const ptsColor=pts>0?'var(--green-text)':pts<0?'var(--red-text)':'var(--text-sec)';
+
+    filas+=`<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:0.5px solid var(--border-light);font-size:12.5px;">
+      <span style="color:var(--text-ter);width:28px;flex-shrink:0;font-weight:600;">J${j}</span>
+      <span style="flex:1;color:var(--text);min-width:0;">Indiv ${estInd} · Pareja ${estPar}${dobleTxt}</span>
+      <span style="font-weight:700;color:${ptsColor};flex-shrink:0;">${pts>0?'+':''}${pts}</span>
+    </div>`;
+  });
+
+  if(!filas) filas=`<p style="text-align:center;padding:20px 0;color:var(--text-ter);font-size:13px;">Sin apuestas registradas.</p>`;
+
+  modal.innerHTML=`<div class="modal-sheet">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+      ${avHtml(jug,36)}
+      <p style="font-size:16px;font-weight:700;flex:1;">${jug.n} — Histórico</p>
+    </div>
+    <div style="max-height:60vh;overflow-y:auto;">${filas}</div>
+    <button onclick="cerrarModalHistoricoJugador()" class="btn-ghost" style="width:100%;text-align:center;margin-top:10px;">Cerrar</button>
+  </div>`;
 }
 
 // ============ HISTORICO ============
