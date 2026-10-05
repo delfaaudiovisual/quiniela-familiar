@@ -272,7 +272,7 @@
         <i class="ti ti-check" style="font-size:26px;color:var(--blue);"></i>
       </div>
       <p style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:4px;">¿Confirmas tus apuestas?</p>
-      <p style="font-size:13px;color:var(--text-sec);line-height:1.5;">No podrás cambiarlas después<br>del <strong>jueves a las 15:00h</strong></p>
+      <p style="font-size:13px;color:var(--text-sec);line-height:1.5;">No podrás cambiarlas después<br>de que <strong>empiece el primer partido</strong></p>
     </div>
     <div style="background:var(--bg);border-radius:var(--radius-sm);padding:8px 14px;margin-bottom:16px;" id="modal-resumen"></div>
     <button class="btn btn-primary" style="font-size:16px;padding:16px;margin-bottom:10px;" onclick="confirmarFinal()">
@@ -344,18 +344,34 @@ const PARTIDOS=[
 ];
 let JORNADA=1; // current active jornada
 let JORNADA_ACTUAL=1; // jornada real actual
-// Bloqueo automático: jueves 15h - martes 00h (las jornadas van de viernes a lunes)
+// Primer partido (fecha+hora) de la jornada activa, o null si todavía no hay horario para
+// ninguno — mismo criterio de fecha/hora que getProximoPartido/getUltimoPartidoJugado.
+function primerKickoffJornada(){
+  const conHorario = PARTIDOS.slice(0,14).filter(p=>p && p.fecha && p.hora);
+  if(!conHorario.length) return null;
+  let min=null;
+  conHorario.forEach(p=>{
+    const [d,m,y]=p.fecha.split('/');
+    const [h,mi]=p.hora.split(':');
+    const dt=new Date(parseInt(y),parseInt(m)-1,parseInt(d),parseInt(h),parseInt(mi));
+    if(!min||dt<min) min=dt;
+  });
+  return min;
+}
+// Bloqueo dinámico: ya no depende del día de la semana (eso dejaba la app cerrada hasta el
+// martes aunque el admin acabara de abrir una jornada nueva en pleno fin de semana — lo que le
+// pasó a Felix con la jornada 12). Ahora se basa en los partidos reales: abierto mientras no haya
+// empezado el primero de la jornada activa; sin horario todavía, se deja abierto (nada que
+// bloquear por calendario). Si la jornada ya está completamente resuelta, bloqueado igualmente
+// (lo cubre también todosLosResultadosFirmes más abajo, pero evita un parpadeo "abierto" entre
+// que cierra el último partido y se confirma la siguiente jornada).
 function calcularBloqueado(){
-  const now = new Date();
-  const day = now.getDay(); // 0=dom, 1=lun, 2=mar, 3=mie, 4=jue, 5=vie, 6=sab
-  const hour = now.getHours();
-  // Bloqueado desde jueves 15h hasta lunes a medianoche (se libera el martes 00h)
-  if(day === 4 && hour >= 15) return true; // jueves desde 15h
-  if(day === 5) return true; // viernes
-  if(day === 6) return true; // sábado
-  if(day === 0) return true; // domingo
-  if(day === 1) return true; // lunes (la jornada sigue activa hasta medianoche)
-  return false;
+  if(!PARTIDOS || !PARTIDOS.length) return true;
+  const regulares = PARTIDOS.slice(0,14);
+  if(regulares.length && regulares.every(pt=>pt&&pt.c===true)) return true;
+  const kickoff = primerKickoffJornada();
+  if(!kickoff) return false;
+  return new Date() >= kickoff;
 }
 let BLOQUEADO = calcularBloqueado();
 // Además del calendario, si TODOS los resultados de la jornada activa (los 14 + el Pleno) ya
@@ -379,19 +395,15 @@ function resultadosEnFirme(partidos){
 // Texto del countdown para mostrar cuánto queda
 function textoBloqueo(){
   if(BLOQUEADO) return 'Apuestas cerradas';
-  const now = new Date();
-  const day = now.getDay();
-  const diasHastaJueves = (4 - day + 7) % 7; // 0 si hoy es jueves
-  const cierre = new Date(now);
-  cierre.setDate(now.getDate() + diasHastaJueves);
-  cierre.setHours(15, 0, 0, 0);
-  const horasRestantes = (cierre - now) / (1000 * 60 * 60);
+  const kickoff = primerKickoffJornada();
+  if(!kickoff) return 'Cierra al empezar el primer partido';
+  const horasRestantes = (kickoff - new Date()) / (1000 * 60 * 60);
   if(horasRestantes <= 24){
     const horas = Math.floor(horasRestantes);
     const mins = Math.round((horasRestantes - horas) * 60);
     return `Cierra en ${horas}h ${mins}min`;
   }
-  return `Cierra el jueves a las 15h`;
+  return `Cierra al empezar el primer partido`;
 }
 
 // ============ STATE ============
@@ -1308,7 +1320,7 @@ function renderStep1(p){
   h+=`<div class="page" style="padding-top:8px;">`;
   h+=stepIndicatorHtml(1);
   if(BLOQUEADO){h+=lockedHtml();}
-  else{h+=`<div class="alert alert-info"><i class="ti ti-info-circle"></i><p>Apuesta antes del <strong>jueves a las 15:00h</strong>.</p></div>`;}
+  else{h+=`<div class="alert alert-info"><i class="ti ti-info-circle"></i><p>Apuesta antes de que <strong>empiece el primer partido</strong>.</p></div>`;}
   h+=`<p class="sec-label">Tu partido — posición ${posInd}</p>`;
   h+=ptInd.pleno?plenoCardHtml(posInd,p.id,false):partidoCardHtml(posInd,p.id,false,true);
   h+=`<button onclick="verClasificacion('liga1')" class="btn btn-secondary" style="margin-top:8px;width:100%;"><i class="ti ti-table"></i> Ver clasificación equipos liga</button>`;
@@ -1366,7 +1378,7 @@ function renderStep2(p){
 
   } else {
     // Nadie la ha puesto — ofrecer o ceder
-    h+=`<div class="alert alert-info"><i class="ti ti-info-circle"></i><p>La apuesta de pareja la puede poner cualquiera de los dos antes del jueves 15h.</p></div>`;
+    h+=`<div class="alert alert-info"><i class="ti ti-info-circle"></i><p>La apuesta de pareja la puede poner cualquiera de los dos antes de que empiece el primer partido.</p></div>`;
     h+=`<p class="sec-label">Pareja — ${PP[p.p].n} — posición ${posPar}</p>`;
     h+=ptPar.pleno?plenoCardHtml(posPar,p.p,true):partidoCardHtml(posPar,p.p,true,true);
     h+=`<div style="display:flex;gap:8px;margin-top:8px;">
@@ -1409,7 +1421,7 @@ function renderStep3(p){
     const comp=JJ.find(j=>j.id!==p.id&&j.p===p.p);
     h+=`<div class="alert alert-warn"><i class="ti ti-alert-triangle"></i><p>Tu apuesta individual está guardada. La apuesta de pareja está pendiente — ${comp?comp.n:'tu pareja'} tiene que rellenarla cuando entre.</p></div>`;
   } else if(!BLOQUEADO&&JORNADA===JORNADA_ACTUAL){
-    h+=`<p style="font-size:11px;color:var(--text-ter);text-align:center;margin-bottom:10px;">Toca tu fila para cambiar tu apuesta antes del jueves 15h</p>`;
+    h+=`<p style="font-size:11px;color:var(--text-ter);text-align:center;margin-bottom:10px;">Toca tu fila para cambiar tu apuesta antes de que empiece el primer partido</p>`;
   }
   h+=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
     <div style="flex:1;height:0.5px;background:var(--border);"></div>
@@ -1552,7 +1564,7 @@ function normasCardsHtml(){
       <div class="help-step"><div class="step-num">1</div><div><p style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:3px;">Cada uno tiene un partido asignado</p><p style="font-size:13px;color:var(--text-sec);line-height:1.5;">Según el orden de la jornada, predices un resultado: <strong>1</strong> (gana el local), <strong>X</strong> (empate) o <strong>2</strong> (gana el visitante).</p></div></div>
       <div class="help-step"><div class="step-num">2</div><div><p style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:3px;">También tienes apuesta de pareja</p><p style="font-size:13px;color:var(--text-sec);line-height:1.5;">Cada pareja comparte un partido extra. Lo pone cualquiera de los dos. Si acertáis, cada uno suma <strong>0,5 puntos</strong>.</p></div></div>
       <div class="help-step"><div class="step-num">3</div><div><p style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:3px;">El orden rota cada semana</p><p style="font-size:13px;color:var(--text-sec);line-height:1.5;">El primero de la lista pasa al final la siguiente jornada. En 15 jornadas todos habrán pasado por todas las posiciones.</p></div></div>
-      <div class="help-step"><div class="step-num">4</div><div><p style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:3px;">Cierre el jueves a las 15:00h</p><p style="font-size:13px;color:var(--text-sec);line-height:1.5;">Después no se pueden cambiar las apuestas. Si alguien se olvida, cualquier otro puede apostar por él o ella — pero esa casilla no puntúa para el dueño.</p></div></div>
+      <div class="help-step"><div class="step-num">4</div><div><p style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:3px;">Cierre al empezar el primer partido</p><p style="font-size:13px;color:var(--text-sec);line-height:1.5;">Después no se pueden cambiar las apuestas. Si alguien se olvida, cualquier otro puede apostar por él o ella — pero esa casilla no puntúa para el dueño.</p></div></div>
     </div>
     <div class="card">
       <p class="sec-label" style="margin-bottom:12px;">El Pleno al 15 ⭐</p>
@@ -1599,7 +1611,7 @@ function stepIndicatorHtml(current){
 }
 
 function lockedHtml(){
-  return`<div class="locked-banner"><i class="ti ti-lock" style="font-size:22px;color:var(--red-text);display:block;margin-bottom:4px;"></i><p style="font-size:14px;font-weight:700;color:var(--red-text);">Apuestas cerradas</p><p style="font-size:12px;color:var(--red-text);margin-top:2px;">El plazo cerró el jueves a las 15:00h</p></div>`;
+  return`<div class="locked-banner"><i class="ti ti-lock" style="font-size:22px;color:var(--red-text);display:block;margin-bottom:4px;"></i><p style="font-size:14px;font-weight:700;color:var(--red-text);">Apuestas cerradas</p><p style="font-size:12px;color:var(--red-text);margin-top:2px;">Ya ha empezado el primer partido de la jornada</p></div>`;
 }
 
 function goStep2(){
