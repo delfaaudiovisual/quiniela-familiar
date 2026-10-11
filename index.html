@@ -865,6 +865,7 @@ async function cargarJornadaLoterías(modo='auto'){
         PARTIDOS[i].marcador = data.partidos[i].marcador || null;
         PARTIDOS[i].dia = data.partidos[i].dia || null;
         PARTIDOS[i].hora = data.partidos[i].hora || null;
+        PARTIDOS[i].suspendido = !!data.partidos[i].suspendido;
         if(data.partidos[i].pleno) PARTIDOS[i].pleno = true;
         if(data.partidos[i].plenoResultado) PARTIDOS[i].plenoResultado = data.partidos[i].plenoResultado;
       }
@@ -1885,13 +1886,8 @@ function renderGlobalTable(p,ap){
       </div>`;
     } else {
       if(a){
-        let bg='#e8e8ed', color='#1a1a1a', border='#c7c7cc';
-        if(pt.c&&pt.r){
-          const ok=a===pt.r;
-          bg=ok?'var(--green-bg)':'var(--red-bg)';
-          color=ok?'var(--green-text)':'var(--red-text)';
-          border=ok?'var(--green-text)':'var(--red-text)';
-        }
+        const col=colorSigno(a, pt);
+        const bg=col.bg, color=col.color, border=col.border;
         const porOtro=ap['_por_'+ent.id];
         const porOtroTag=porOtro?`<p style="font-size:9px;color:var(--text-ter);text-align:right;margin-top:2px;">por ${jugador(porOtro)?.n||porOtro}</p>`:'';
         let dobleTag='';
@@ -2111,12 +2107,27 @@ function signoFromScore(h,a){return h>a?'1':h===a?'X':'2';}
 // falla el signo (ganador/empate, 0 puntos); si acierta el signo ya suma puntos aunque falle el
 // marcador exacto, así que se pinta en verde (o ámbar si se quiere distinguir "exacto" de "solo
 // signo") en vez de en rojo como si fuera un fallo completo.
+// Mismo criterio que colorPleno pero para una casilla normal (1/X/2): ámbar si el backend marcó
+// el partido como suspendido/aplazado de verdad, en vez de dejarlo en el gris neutro de "sin
+// resultado todavía" que también se usa para partidos que ni siquiera han empezado.
+function colorSigno(a, pt){
+  if(pt && pt.suspendido) return {bg:'#FFF3CD', color:'#946200', border:'#FFC107'};
+  if(!pt || !pt.c || !pt.r) return {bg:'#e8e8ed', color:'#1a1a1a', border:'#c7c7cc'};
+  const ok=a===pt.r;
+  return ok
+    ? {bg:'var(--green-bg)', color:'var(--green-text)', border:'var(--green-text)'}
+    : {bg:'var(--red-bg)', color:'var(--red-text)', border:'var(--red-text)'};
+}
 function colorPleno(apostado, pt){
   // Hace falta pt.c (resultado firme) además de pt.marcador: mientras el partido está en juego
   // (marcador provisional con 🔴) puntosPleno/calcPuntos todavía no dan puntos por él — si aquí se
   // pintaba de color con solo el marcador en vivo, salía naranja/verde "adelantado" sin que el
   // punto estuviera sumado todavía, dando la sensación de que faltaba sumar algo que de hecho
   // nunca se perdió, solo no había llegado su momento.
+  // Aplazado/suspendido de verdad (el backend ya comprobó que el "finalizado" de Losilla no
+  // cuadraba con football-data/ESPN) — ni rojo ni verde tienen sentido todavía, se avisa en
+  // ámbar de que sigue pendiente de un resultado real, para no confundirlo con "nadie apostó aquí".
+  if(pt && pt.suspendido) return {bg:'#FFF3CD', color:'#946200', border:'#FFC107'};
   if(!pt || !pt.c || !pt.marcador || !apostado || !apostado.l || !apostado.v) return {bg:'#e8e8ed', color:'#1a1a1a', border:'#c7c7cc'};
   const [gl,gv]=pt.marcador.replace(' 🔴','').split('-');
   if(gl===undefined||gv===undefined) return {bg:'#e8e8ed', color:'#1a1a1a', border:'#c7c7cc'};
@@ -2331,6 +2342,7 @@ function renderModalHistoricoJugador(playerId){
   const OK='<span style="color:var(--green-text);font-weight:800;">✓</span>';
   const FAIL='<span style="color:var(--red-text);font-weight:800;">✗</span>';
   const PEND='<span style="color:var(--text-ter);">⏳</span>';
+  const SUSP='<span style="color:#946200;font-weight:700;">⏸️</span>';
   const SINAP='<span style="color:var(--text-ter);">—</span>';
 
   // El Pleno al 15 puntúa en DOS pasos, no es acierto/fallo simple: acertar el signo (quién gana
@@ -2342,6 +2354,7 @@ function renderModalHistoricoJugador(playerId){
     if(pt.pleno){
       const pk=ap['pleno_'+entityId]||{};
       if(!pk.l||!pk.v) return SINAP;
+      if(pt.suspendido) return `⭐${SUSP}`;
       if(!pt.c||!pt.marcador) return `⭐${PEND}`;
       const [gl,gv]=pt.marcador.replace(' 🔴','').split('-');
       const signoReal=signoFromScore(parseInt(gl),parseInt(gv));
@@ -2351,6 +2364,7 @@ function renderModalHistoricoJugador(playerId){
     }
     const a=ap[entityId];
     if(!a) return SINAP;
+    if(pt.suspendido) return SUSP;
     if(!pt.c||!pt.r) return PEND;
     return a===pt.r?OK:FAIL;
   };
@@ -2716,13 +2730,8 @@ function renderYo(){
         return`<span style="display:inline-flex;align-items:center;justify-content:center;height:30px;min-width:52px;border-radius:6px;font-size:13px;font-weight:800;background:${bg};color:${color};border:1.5px solid ${border};">⭐${pk.l}-${pk.v}</span>`;
       }
       if(!a)return`<span style="display:inline-flex;align-items:center;justify-content:center;height:30px;width:44px;font-size:16px;color:var(--text-ter);">—</span>`;
-      let bg='#e8e8ed',color='#1a1a1a',border='#c7c7cc';
-      if(pt?.c&&pt?.r){
-        const ok=a===pt.r;
-        bg=ok?'var(--green-bg)':'var(--red-bg)';
-        color=ok?'var(--green-text)':'var(--red-text)';
-        border=ok?'var(--green-text)':'var(--red-text)';
-      }
+      const col=colorSigno(a, pt);
+      const bg=col.bg, color=col.color, border=col.border;
       return`<span style="display:inline-flex;align-items:center;justify-content:center;height:30px;width:44px;border-radius:6px;font-size:14px;font-weight:800;background:${bg};color:${color};border:1.5px solid ${border};">${a}</span>`;
     };
     const resBadge=()=>'';
