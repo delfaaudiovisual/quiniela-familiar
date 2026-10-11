@@ -816,6 +816,12 @@ async function actualizarResultados() {
   if(updated) {
     const p = jugador(S.player);
     if(p && S.step === 3) renderJornada();
+    // El Ranking y el histórico de Yo también dependen de PARTIDOS (vía calcPuntos) — sin esto,
+    // cuando un partido cerraba con la app ya abierta, el badge se ponía al día (vía renderJornada
+    // arriba) pero el total del Ranking se quedaba con el número de antes de ese resultado hasta
+    // que el usuario salía y volvía a entrar en esa pestaña a mano.
+    if(document.getElementById('tab-ranking')?.style.display!=='none') renderRanking();
+    if(document.getElementById('tab-yo')?.style.display!=='none') renderYo();
     // Reschedule based on new state
     programarPolling();
   }
