@@ -998,10 +998,24 @@ async function loadApuestasFromDB(jornada){
 async function saveApuesta(jornada, jugadorId, apuesta, apostadoPor){
   try {
     const supa = getSupa();
-    const row = { jornada, jugador_id: jugadorId, apuesta, updated_at: new Date().toISOString() };
-    if(apostadoPor) row.apostado_por = apostadoPor;
+    // apostado_por SIEMPRE explícito (valor o null): si alguien apostó "por otro" y luego el
+    // dueño real entra y pone la suya, este guardado tiene que PISAR esa marca, no solo omitirla
+    // — un upsert sin la columna en el payload deja el valor antiguo tal cual en la fila (el
+    // UPDATE generado solo toca las columnas que se mandan), así que la apuesta del dueño se
+    // seguía contando como "de otro" y quedaba sin puntuar para siempre.
+    const row = { jornada, jugador_id: jugadorId, apuesta, apostado_por: apostadoPor || null, updated_at: new Date().toISOString() };
     await supa.from('apuestas').upsert(row, {onConflict: 'jornada,jugador_id'});
   } catch(e){ console.error('Error saving apuesta:', e); }
+}
+// Limpia la marca de "pleno apostado por otro" para entityId en esta jornada — hace falta
+// llamarla cuando el dueño real entra y pone su propio Pleno, porque savePlenoApuesta escribe en
+// apuestas_pleno (que no tiene columna apostado_por) y nunca toca la fila sintética
+// '_pleno_por_'+entityId de la tabla apuestas donde vive esa marca.
+async function limpiarPlenoPorOtro(jornada, entityId){
+  try {
+    const supa = getSupa();
+    await supa.from('apuestas').delete().eq('jornada', jornada).eq('jugador_id', '_pleno_por_'+entityId);
+  } catch(e){ console.error('Error limpiando pleno por otro:', e); }
 }
 
 async function apostarPorOtro(entityId, signo){
@@ -1752,19 +1766,28 @@ async function confirmarFinal(){
     }
   }catch(e){}
 
-  // Individual
-  if(!ptInd.pleno && ap[p.id]) await saveApuesta(JORNADA, p.id, ap[p.id]);
+  // Individual — igual que con el Pleno: si esta casilla la había apostado antes otro por él/ella,
+  // guardar aquí la suya propia tiene que limpiar esa marca (saveApuesta ya manda apostado_por
+  // explícito a null) para que vuelva a puntuarle.
+  if(!ptInd.pleno && ap[p.id]){ await saveApuesta(JORNADA, p.id, ap[p.id]); delete ap['_por_'+p.id]; }
   // Pareja
-  if(!ptPar.pleno && ap[p.p]) await saveApuesta(JORNADA, p.p, ap[p.p]);
-  // Pleno individual
+  if(!ptPar.pleno && ap[p.p]){ await saveApuesta(JORNADA, p.p, ap[p.p]); delete ap['_por_'+p.p]; }
+  // Pleno individual — si antes alguien lo había apostado "por él", esto es el dueño reclamando
+  // su propia apuesta: hay que borrar esa marca o se seguiría sin puntuarle (ver limpiarPlenoPorOtro).
   if(ptInd.pleno) {
     const pk=ap['pleno_'+p.id]||{};
-    if(pk.l&&pk.v) await savePlenoApuesta(JORNADA, p.id, pk.l, pk.v);
+    if(pk.l&&pk.v){
+      await savePlenoApuesta(JORNADA, p.id, pk.l, pk.v);
+      if(ap['_por_'+p.id]){ delete ap['_por_'+p.id]; await limpiarPlenoPorOtro(JORNADA, p.id); }
+    }
   }
   // Pleno pareja
   if(ptPar.pleno) {
     const pk=ap['pleno_'+p.p]||{};
-    if(pk.l&&pk.v) await savePlenoApuesta(JORNADA, p.p, pk.l, pk.v);
+    if(pk.l&&pk.v){
+      await savePlenoApuesta(JORNADA, p.p, pk.l, pk.v);
+      if(ap['_por_'+p.p]){ delete ap['_por_'+p.p]; await limpiarPlenoPorOtro(JORNADA, p.p); }
+    }
   }
 
   // Avisar a la pareja si acabamos de poner su apuesta por primera vez
