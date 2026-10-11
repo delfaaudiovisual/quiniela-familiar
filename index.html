@@ -1817,11 +1817,8 @@ function renderGlobalTable(p,ap){
         // Check if pleno result is available and if correct
         let pBg='#e8e8ed', pColor='#1a1a1a', pBorder='#c7c7cc';
         if(pt.marcador){
-          const [gl,gv]=pt.marcador.split('-');
-          const ok=plenoExacto(pap,gl,gv);
-          pBg=ok?'var(--green-bg)':'var(--red-bg)';
-          pColor=ok?'var(--green-text)':'var(--red-text)';
-          pBorder=ok?'var(--green-text)':'var(--red-text)';
+          const col=colorPleno(pap, pt.marcador);
+          pBg=col.bg; pColor=col.color; pBorder=col.border;
         }
         const porOtroPleno=ap['_por_'+ent.id];
         const porOtroPlenoTag=porOtroPleno?`<p style="font-size:9px;color:var(--text-ter);text-align:right;margin-top:2px;">por ${jugador(porOtroPleno)?.n||porOtroPleno}</p>`:'';
@@ -2084,6 +2081,22 @@ function puntosPleno(pt, apostado, esPareja){
   return plenoExacto(apostado,gl,gv)?base+extra:base;
 }
 function signoFromScore(h,a){return h>a?'1':h===a?'X':'2';}
+// Color del badge del Pleno al 15 según lo que realmente puntúa (ver puntosPleno): rojo solo si
+// falla el signo (ganador/empate, 0 puntos); si acierta el signo ya suma puntos aunque falle el
+// marcador exacto, así que se pinta en verde (o ámbar si se quiere distinguir "exacto" de "solo
+// signo") en vez de en rojo como si fuera un fallo completo.
+function colorPleno(apostado, marcador){
+  if(!marcador || !apostado || !apostado.l || !apostado.v) return {bg:'#e8e8ed', color:'#1a1a1a', border:'#c7c7cc'};
+  const [gl,gv]=marcador.replace(' 🔴','').split('-');
+  if(gl===undefined||gv===undefined) return {bg:'#e8e8ed', color:'#1a1a1a', border:'#c7c7cc'};
+  const signoReal=signoFromScore(parseInt(gl),parseInt(gv));
+  const vl=valorBucket(apostado.l), vv=valorBucket(apostado.v);
+  const signoApostado=vl>vv?'1':vl===vv?'X':'2';
+  if(signoApostado!==signoReal) return {bg:'var(--red-bg)', color:'var(--red-text)', border:'var(--red-text)'};
+  return plenoExacto(apostado,gl,gv)
+    ? {bg:'var(--green-bg)', color:'var(--green-text)', border:'var(--green-text)'}
+    : {bg:'var(--orange-bg)', color:'var(--orange-text)', border:'var(--orange-text)'};
+}
 
 function calcPuntos(j){
   const ap=S.apuestas[j]||{};
@@ -2669,11 +2682,8 @@ function renderYo(){
         if(!pk.l||!pk.v) return`<span style="color:var(--text-ter);">—</span>`;
         let bg='#e8e8ed',color='#1a1a1a',border='#c7c7cc';
         if(pt?.marcador){
-          const [gl,gv]=pt.marcador.replace(' 🔴','').split('-');
-          const ok=plenoExacto(pk,gl,gv);
-          bg=ok?'var(--green-bg)':'var(--red-bg)';
-          color=ok?'var(--green-text)':'var(--red-text)';
-          border=ok?'var(--green-text)':'var(--red-text)';
+          const col=colorPleno(pk, pt.marcador);
+          bg=col.bg; color=col.color; border=col.border;
         }
         return`<span style="display:inline-flex;align-items:center;justify-content:center;height:30px;min-width:52px;border-radius:6px;font-size:13px;font-weight:800;background:${bg};color:${color};border:1.5px solid ${border};">⭐${pk.l}-${pk.v}</span>`;
       }
