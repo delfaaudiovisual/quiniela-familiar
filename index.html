@@ -308,7 +308,10 @@ const JJ=[
   {id:'ivan',     n:'Ivan',     p:'p5',c:'#FAECE7',ct:'#712B13'},
   {id:'jonathan', n:'Jonathan', p:'p3',c:'#FAEEDA',ct:'#633806'},
   {id:'daniel',   n:'Daniel',   p:'p3',c:'#EAF3DE',ct:'#27500A'},
-  {id:'nines',    n:'Nines',    p:'p2',c:'#FBEAF0',ct:'#72243E'},
+  // siempreProxy: Nines no usa la app — Felix le apuesta siempre por ella. A diferencia del
+  // "apostar por otro" normal (un olvido puntual, que a propósito NO puntúa para el dueño), esto
+  // es su forma habitual de jugar, así que sus apuestas sí deben contar como propias.
+  {id:'nines',    n:'Nines',    p:'p2',c:'#FBEAF0',ct:'#72243E', siempreProxy:true},
   {id:'felix',    n:'Felix',    p:'p2',c:'#FCEBEB',ct:'#791F1F'},
   {id:'mari',     n:'Mari',     p:'p1',c:'#F1EFE8',ct:'#444441'},
   {id:'javier',   n:'Javier',  p:'p1',c:'#EEEDFE',ct:'#26215C'},
@@ -2140,6 +2143,16 @@ function colorPleno(apostado, pt){
     : {bg:'var(--orange-bg)', color:'var(--orange-text)', border:'var(--orange-text)'};
 }
 
+// ¿Esta casilla (jugador individual o pareja) cuenta aunque la haya apostado otro? Solo para
+// quien tiene siempreProxy (ej. Nines, que no usa la app y Felix le apuesta siempre por ella) —
+// para una pareja basta con que uno de los dos lo tenga marcado.
+function siempreProxy(entityId){
+  if(jugador(entityId)?.siempreProxy) return true;
+  return JJ.some(j=>j.p===entityId && j.siempreProxy);
+}
+function cuentaApuesta(ap, entityId){
+  return !ap['_por_'+entityId] || siempreProxy(entityId);
+}
 function calcPuntos(j){
   const ap=S.apuestas[j]||{};
   let pts={};
@@ -2154,15 +2167,15 @@ function calcPuntos(j){
     const ptPar=partidosJ[posPar-1];
     if(ptInd){
       if(ptInd.pleno){
-        if(!ap['_por_'+p.id]) n+=puntosPleno(ptInd, ap['pleno_'+p.id], false);
-      } else if(ptInd.c&&ptInd.r&&ap[p.id]!==undefined&&!ap['_por_'+p.id]){
+        if(cuentaApuesta(ap,p.id)) n+=puntosPleno(ptInd, ap['pleno_'+p.id], false);
+      } else if(ptInd.c&&ptInd.r&&ap[p.id]!==undefined&&cuentaApuesta(ap,p.id)){
         if(ap[p.id]===ptInd.r) n++;
       }
     }
     if(ptPar){
       if(ptPar.pleno){
-        if(!ap['_por_'+p.p]) n+=puntosPleno(ptPar, ap['pleno_'+p.p], true);
-      } else if(ptPar.c&&ptPar.r&&ap[p.p]!==undefined&&!ap['_por_'+p.p]){
+        if(cuentaApuesta(ap,p.p)) n+=puntosPleno(ptPar, ap['pleno_'+p.p], true);
+      } else if(ptPar.c&&ptPar.r&&ap[p.p]!==undefined&&cuentaApuesta(ap,p.p)){
         if(ap[p.p]===ptPar.r) n+=0.5;
       }
     }
@@ -2348,7 +2361,7 @@ function renderModalHistoricoJugador(playerId){
   // real (el pronóstico en sí acertó o falló) pero NO puntúa para el dueño — calcPuntos la excluye
   // a propósito. Sin este aviso, el histórico mostraba un ✓ normal y el número de puntos no
   // cuadraba con lo que parecía un acierto, como si el cálculo estuviera mal.
-  const porOtroTag=(ap,entityId)=>ap['_por_'+entityId]
+  const porOtroTag=(ap,entityId)=>(ap['_por_'+entityId]&&!siempreProxy(entityId))
     ?`<span title="La apostó ${jugador(ap['_por_'+entityId])?.n||ap['_por_'+entityId]} por ${jugador(entityId)?.n||entityId} — no puntúa para el dueño" style="font-size:10px;">🚫</span>`
     :'';
 
