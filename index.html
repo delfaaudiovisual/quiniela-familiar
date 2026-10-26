@@ -2344,6 +2344,13 @@ function renderModalHistoricoJugador(playerId){
   const PEND='<span style="color:var(--text-ter);">⏳</span>';
   const SUSP='<span style="color:#946200;font-weight:700;">⏸️</span>';
   const SINAP='<span style="color:var(--text-ter);">—</span>';
+  // Si la casilla la apostó otro por el dueño (ap['_por_'+entityId]), el tick de acierto/fallo es
+  // real (el pronóstico en sí acertó o falló) pero NO puntúa para el dueño — calcPuntos la excluye
+  // a propósito. Sin este aviso, el histórico mostraba un ✓ normal y el número de puntos no
+  // cuadraba con lo que parecía un acierto, como si el cálculo estuviera mal.
+  const porOtroTag=(ap,entityId)=>ap['_por_'+entityId]
+    ?`<span title="La apostó ${jugador(ap['_por_'+entityId])?.n||ap['_por_'+entityId]} por ${jugador(entityId)?.n||entityId} — no puntúa para el dueño" style="font-size:10px;">🚫</span>`
+    :'';
 
   // El Pleno al 15 puntúa en DOS pasos, no es acierto/fallo simple: acertar el signo (quién gana
   // o empate) ya vale por sí solo, y acertar además el marcador exacto suma un punto extra. Así
@@ -2359,14 +2366,14 @@ function renderModalHistoricoJugador(playerId){
       const [gl,gv]=pt.marcador.replace(' 🔴','').split('-');
       const signoReal=signoFromScore(parseInt(gl),parseInt(gv));
       const signoApostado=valorBucket(pk.l)>valorBucket(pk.v)?'1':valorBucket(pk.l)===valorBucket(pk.v)?'X':'2';
-      if(signoApostado!==signoReal) return `⭐${FAIL}`;
-      return `⭐${OK}${plenoExacto(pk,gl,gv)?OK:FAIL}`;
+      const tick=signoApostado!==signoReal?FAIL:`${OK}${plenoExacto(pk,gl,gv)?OK:FAIL}`;
+      return `⭐${tick}${porOtroTag(ap,entityId)}`;
     }
     const a=ap[entityId];
     if(!a) return SINAP;
     if(pt.suspendido) return SUSP;
     if(!pt.c||!pt.r) return PEND;
-    return a===pt.r?OK:FAIL;
+    return `${a===pt.r?OK:FAIL}${porOtroTag(ap,entityId)}`;
   };
 
   let filas='';
