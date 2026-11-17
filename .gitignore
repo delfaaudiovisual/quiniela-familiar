@@ -1,5 +1,6 @@
 # Local Netlify folder
 .netlify
 
-# Supabase Edge Functions se despliegan aparte vía Supabase CLI, no van en este repo (Netlify)
-supabase/
+# supabase/ SÍ se trackea a propósito (ver supabase/functions/README.md) — Netlify solo
+# despliega lo necesario para la web estática, así que tener este código de más aquí no
+# interfiere con ese despliegue, y así queda siempre a mano entre sesiones.
