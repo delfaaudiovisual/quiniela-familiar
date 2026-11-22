@@ -69,10 +69,16 @@ function teamsMatch(a: string, b: string): boolean {
   return ta.some(x => tb.some(y => x.includes(y) || y.includes(x)));
 }
 
-// `estado` refleja el status real que da la fuente (football-data/ESPN), no una suposición: sirve
-// para distinguir "terminado de verdad" de "Losilla cree que terminó pero esta fuente dice que no"
-// (aplazado, suspendido, todavía no empezado...) — ver postergadoSegunFuente() más abajo.
-type LiveScore = { home: string; away: string; marcador: string | null; c: boolean; r: string | null; dia?: string | null; hora?: string | null; estado?: string | null };
+// `estado` es el status crudo que da la fuente, solo para depurar/loguear. `genuinoSuspendido`
+// es la señal de verdad que se usa para vetar a Losilla: true SOLO cuando la fuente dice de forma
+// explícita que el partido está aplazado/suspendido/cancelado — NUNCA por "todavía no tiene
+// marcador", que también es cierto para un partido que sencillamente no ha empezado o para el que
+// la fuente externa aún no se ha actualizado (retraso normal de la API justo tras el pitido
+// final). Confundir esas dos cosas fue justo el bug del 22 de noviembre: 5 partidos de un mismo
+// domingo salieron en amarillo porque football-data/ESPN iban con retraso, no porque estuvieran
+// realmente suspendidos — uno de ellos (R.Sociedad-Sevilla femenino) ya tenía resultado real
+// (1-0) en Losilla.
+type LiveScore = { home: string; away: string; marcador: string | null; c: boolean; r: string | null; dia?: string | null; hora?: string | null; estado?: string | null; genuinoSuspendido?: boolean };
 
 // Busca el marcador (o el día/hora) de un partido de Losilla (local/visitante) dentro de la lista
 // traída de football-data/ESPN. Los partidos femeninos ("... (f)") se buscan aparte, quitando el
@@ -87,15 +93,15 @@ function findLiveScore(scores: LiveScore[], local: string, visitante: string): L
   return scores.find(s => teamsMatch(s.home, local) && teamsMatch(s.away, visitante));
 }
 
-// ¿Esta fuente (football-data/ESPN) conoce el partido y dice explícitamente que NO ha terminado
-// (aplazado, suspendido, cancelado, todavía por jugar...)? Se usa como veto al "finalizado" de
-// Losilla, cuya única pista es que el hueco de la hora esté oculto en el HTML — y ese hueco
-// también se oculta en un partido APLAZADO (no hay hora que mostrar), no solo en uno ya jugado.
-// Ojo: si la fuente no conoce el partido (sin datos, fuera de la ventana de fechas...) esto es
-// `false` — en ese caso no hay con qué contradecir a Losilla y se le sigue dando el beneficio de
-// la duda, como siempre.
+// ¿Esta fuente dice EXPLÍCITAMENTE que el partido está aplazado/suspendido/cancelado? Se usa como
+// veto al "finalizado" de Losilla, cuya única pista es que el hueco de la hora esté oculto en el
+// HTML — y ese hueco también se oculta en un partido APLAZADO (no hay hora que mostrar), no solo
+// en uno ya jugado. Pero ojo: se exige el status explícito (ver genuinoSuspendido), NO basta con
+// "esta fuente no tiene marcador todavía" — eso también pasa con un partido que sencillamente no
+// ha empezado o que la fuente externa aún no ha actualizado, y vetar a Losilla en ese caso tira
+// abajo un resultado que en realidad ya era correcto.
 function postergadoSegunFuente(live: LiveScore | undefined): boolean {
-  return !!live && !live.marcador && live.estado !== null && live.estado !== undefined;
+  return !!live && live.genuinoSuspendido === true;
 }
 
 const FBDATA_KEY = Deno.env.get("FBDATA_KEY") || "53cd7637fb9648ae9915bceb49065fef";
@@ -152,12 +158,15 @@ async function getFBDCompeticion(competition: string): Promise<LiveScore[] | nul
       const status = match.status;
       const isLive = status === 'IN_PLAY' || status === 'PAUSED';
       const isFinal = status === 'FINISHED';
+      // football-data.org SÍ distingue estados reales de interrupción de "todavía no ha
+      // empezado"/"en juego" — solo estos tres cuentan como una suspensión/aplazamiento genuino.
+      const genuinoSuspendido = status === 'SUSPENDED' || status === 'POSTPONED' || status === 'CANCELLED';
       const { dia, hora } = match.utcDate ? diaHoraDesdeISO(match.utcDate) : { dia: null, hora: null };
       return {
         home: homeName, away: awayName,
         marcador: (isLive || isFinal) ? `${homeScore}-${awayScore}${isLive ? ' 🔴' : ''}` : null,
         c: isFinal, r: isFinal ? signoFromScore(homeScore, awayScore) : null,
-        dia, hora, estado: status || null,
+        dia, hora, estado: status || null, genuinoSuspendido,
       };
     });
   } catch (e) {
@@ -228,7 +237,12 @@ async function getESPNLigas(leagues: string[]): Promise<LiveScore[]> {
           const away = ev.competitors?.find((c: any) => !c.isHome);
           if (!home || !away) continue;
 
-          const state = ev.status?.state; // 'pre' | 'in' | 'post'
+          const state = ev.status?.state; // 'pre' | 'in' | 'post' — SOLO estos tres, no hay un
+          // estado propio de "aplazado"/"suspendido": un partido pospuesto también aparece como
+          // 'pre' (igual que uno que sencillamente no ha empezado todavía), así que ESPN no puede
+          // distinguir entre las dos cosas. genuinoSuspendido se deja siempre false aquí — nunca
+          // vetamos a Losilla con datos de ESPN para esto (solo football-data.org, que sí separa
+          // SUSPENDED/POSTPONED/CANCELLED de SCHEDULED).
           const isLive = state === 'in';
           const isFinal = state === 'post';
           const homeScore = Number(home.score ?? 0);
@@ -240,7 +254,7 @@ async function getESPNLigas(leagues: string[]): Promise<LiveScore[]> {
             away: away.displayName || away.shortDisplayName || '',
             marcador: (isLive || isFinal) ? `${homeScore}-${awayScore}${isLive ? ' 🔴' : ''}` : null,
             c: isFinal, r: isFinal ? signoFromScore(homeScore, awayScore) : null,
-            dia, hora, estado: state || null,
+            dia, hora, estado: state || null, genuinoSuspendido: false,
           });
         }
       }
