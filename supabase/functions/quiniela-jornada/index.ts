@@ -455,6 +455,20 @@ async function fetchProximas(): Promise<{ jornadaNum: number | null; partidos: a
   }
 }
 
+// Construye la lista de 15 casillas (sin marcador, nada se ha jugado todavía) y evalúa
+// jornadaValida a partir de los partidos de /proximas — compartido entre la rama jornadaHistorica
+// (previa que ve el admin) y la rama por defecto (vista normal del jugador), que necesitan
+// exactamente lo mismo cuando el escrutinio todavía no tiene la jornada publicada.
+async function construirDesdeProximas(proximas: { partidos: any[] }) {
+  const regular = regularByPosicion(proximas.partidos, (p: any) => ({
+    l: p.l, v: p.v, r: null, c: false, marcador: null, suspendido: false, dia: p.dia || null, hora: p.hora || null,
+  }));
+  const pleno = proximas.partidos.find((p: any) => p.posicion === 15 || p.pleno);
+  regular.push({ l: pleno?.l || "Pleno al 15", v: pleno?.v || "", r: null, c: false, pleno: true, marcador: null, suspendido: false, dia: pleno?.dia || null, hora: pleno?.hora || null });
+  const { valida: jornadaValida, primeraCount } = await evaluarJornadaValida(proximas.partidos);
+  return { regular, jornadaValida, primeraCount };
+}
+
 // Temporada LaLiga esperada ahora mismo, ej. "26/27" (cambia de año en julio, antes de que arranque la Liga)
 function temporadaEsperada(): string {
   const now = new Date();
@@ -732,12 +746,7 @@ serve(async (req) => {
       // no publicada".
       const proximas = await fetchProximas();
       if (proximas.jornadaNum === jornadaHistorica && proximas.partidos.length >= 13) {
-        const regular = regularByPosicion(proximas.partidos, (p: any) => ({
-          l: p.l, v: p.v, r: null, c: false, marcador: null, suspendido: false, dia: p.dia || null, hora: p.hora || null,
-        }));
-        const pleno = proximas.partidos.find((p: any) => p.posicion === 15 || p.pleno);
-        regular.push({ l: pleno?.l || "Pleno al 15", v: pleno?.v || "", r: null, c: false, pleno: true, marcador: null, suspendido: false, dia: pleno?.dia || null, hora: pleno?.hora || null });
-        const { valida: jornadaValida, primeraCount } = await evaluarJornadaValida(proximas.partidos);
+        const { regular, jornadaValida, primeraCount } = await construirDesdeProximas(proximas);
         return new Response(JSON.stringify({ jornadaNum: jornadaHistorica, temporada: temporadaEsperada(), source: "eduardolosilla_proximas", jornadaValida, primeraCount, partidos: regular }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
@@ -783,6 +792,22 @@ serve(async (req) => {
     const parsed = await fetchEscrutinio(jornadaActual);
 
     if (parsed.partidos.length < 13) {
+      // Escrutinio todavía no publicado para esta jornada — pasa justo al abrirla, si Losilla aún
+      // no ha sacado su escrutinio aunque ya tenga el boleto listo en /proximas (mismo caso que
+      // ya resuelve la rama jornadaHistorica de arriba, ver fetchProximas/construirDesdeProximas).
+      // Sin este fallback, la vista normal del jugador se quedaba mostrando "no hay jornada de
+      // Primera" aunque la previa del admin ya la hubiera detectado bien.
+      const proximas = await fetchProximas();
+      if (proximas.jornadaNum === jornadaActual && proximas.partidos.length >= 13) {
+        const { regular, jornadaValida, primeraCount } = await construirDesdeProximas(proximas);
+        if (!jornadaValida) {
+          return new Response(JSON.stringify({
+            jornadaValida: false, jornadaNum: jornadaActual, temporada: temporadaEsperada(), temporadaEsperada: temporadaEsperada(), primeraCount, partidos: [],
+          }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+        return new Response(JSON.stringify({ jornadaValida: true, jornadaNum: jornadaActual, temporada: temporadaEsperada(), temporadaEsperada: temporadaEsperada(), source: "eduardolosilla_proximas", partidos: regular }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
       return new Response(JSON.stringify({ error: "No se pudieron obtener los partidos", jornadaNum: jornadaActual }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 });
     }
