@@ -355,15 +355,16 @@ async function avanzarYPreguntarSiguiente(jornadaCierreInicial: number, rotacion
       // Sin mencionar ya la jornada anterior ("saltamos X") — con el auto-salto en cadena, esa
       // jornada anterior puede ser ella misma un salto automático del que nadie tuvo que
       // enterarse; lo único relevante para quien decide es que la nueva YA está confirmada como
-      // de Primera.
-      const mensajeConfirmacion = `🏁 Jornada ${candidato} ya disponible y parece de Primera. ¿Confirmas que abrimos apuestas? Pulsa para decidir.`;
-      for (const admin of ADMINS) {
-        await callNotifications({
-          tipo: 'resultado_jornada',
-          jugador_id: admin,
-          datos: { mensaje: mensajeConfirmacion }
-        });
-      }
+      // de Primera. Vía 'aviso_admin' (no 'resultado_jornada') porque necesita un título propio
+      // en el push, no el genérico "Jornada cerrada" de esa otra notificación.
+      await callNotifications({
+        tipo: 'aviso_admin',
+        datos: {
+          titulo: `🏁 Jornada ${candidato} de La Quiniela ya disponible y parece de Primera`,
+          mensaje: '¿Confirmas que abrimos apuestas? Pulsa para decidir.',
+          destinatarios: ADMINS
+        }
+      });
     }
     return;
   }
