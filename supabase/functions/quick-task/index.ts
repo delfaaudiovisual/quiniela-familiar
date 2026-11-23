@@ -262,12 +262,19 @@ serve(async (req) => {
     }
 
     case "aviso_admin": {
-      // Aviso informativo SOLO para los admins, nunca para el resto de jugadores — no necesita
+      // Aviso informativo — nunca para el resto de jugadores, solo para admins — que no necesita
       // respuesta, es solo un "por si acaso te interesa saberlo". Pensado para el auto-salto de
       // una jornada que cron-resultados detecta que no es de Primera (ver avanzarYPreguntarSiguiente):
       // así queda constancia de que algo se saltó solo, por si el heurístico se equivocara alguna
       // vez y hiciera falta corregirlo a mano.
-      await notificar(ADMINS, {
+      //
+      // datos.destinatarios (ej. ['daniel']): a quién exactamente, por si no debe ir a todos los
+      // admins (ej. el aviso de auto-salto solo va a Daniel, para no darle ruido a Felix de cada
+      // Champions/Copa saltada). Sin ese campo, cae a todos los admins.
+      const destinatariosAviso = Array.isArray(datos?.destinatarios) && datos.destinatarios.length
+        ? datos.destinatarios
+        : ADMINS;
+      await notificar(destinatariosAviso, {
         title: datos?.titulo || "ℹ️ La Piripiniela",
         body: datos?.mensaje || "",
         icon: "/icon.png",

@@ -276,19 +276,24 @@ async function calcularClasificacionGeneral(hastaJornada: number): Promise<{ id:
 // datos.
 const MAX_AUTOSALTOS_POR_PASE = 10;
 
+// Quién recibe el aviso silencioso de cada auto-salto (no requiere respuesta) — distinto de
+// ADMINS (quien recibe la pregunta de confirmación de verdad): solo Daniel, para que a Felix
+// nunca le llegue ruido de las jornadas de Champions/Copa que se saltan solas — a él solo le
+// llegan las jornadas de Primera que de verdad le toca confirmar.
+const ADMINS_AVISO_SILENCIOSO = ['daniel'];
+
 // Mira la jornada siguiente a `jornadaCierre` y, mientras no sea de Primera (jornadaValida
-// false) pero ya tenga datos publicados, la salta ella sola — sin esperar a que Felix pulse nada
+// false) pero ya tenga datos publicados, la salta ella sola — sin esperar a que nadie pulse nada
 // — y sigue mirando la de después, encadenado (ej. dos jornadas de Champions seguidas se saltan
 // las dos solas en el mismo pase). En cuanto encuentra una jornada que SÍ es de Primera, o se
 // queda sin datos todavía publicados de la siguiente, para ahí: si es de Primera, deja la
-// confirmación pendiente para que a Felix solo le quede confirmar que la jugamos (el sistema ya
-// ha comprobado que son partidos de Primera); si no hay datos aún, no hace nada más y lo
-// reintenta en el siguiente pase del cron — como cada auto-salto ya queda guardado en el momento
-// en que ocurre, nunca se vuelve a mirar ni se repite una jornada ya saltada.
-async function avanzarYPreguntarSiguiente(jornadaCierreInicial: number, rotacionInicial: number, esSaltadaInicial: boolean) {
+// confirmación pendiente para que a los admins solo les quede confirmar que la jugamos (el
+// sistema ya ha comprobado que son partidos de Primera); si no hay datos aún, no hace nada más y
+// lo reintenta en el siguiente pase del cron — como cada auto-salto ya queda guardado en el
+// momento en que ocurre, nunca se vuelve a mirar ni se repite una jornada ya saltada.
+async function avanzarYPreguntarSiguiente(jornadaCierreInicial: number, rotacionInicial: number) {
   let jornadaCierre = jornadaCierreInicial;
   const rotacionCierre = rotacionInicial;
-  let huboAutoSalto = false;
 
   for (let i = 0; i < MAX_AUTOSALTOS_POR_PASE; i++) {
     const candidato = jornadaCierre + 1;
@@ -311,23 +316,23 @@ async function avanzarYPreguntarSiguiente(jornadaCierreInicial: number, rotacion
         jornada: candidato, clave: 'jornada_actual', valor: String(candidato)
       }, { onConflict: 'jornada,clave' });
 
-      // Aviso silencioso solo a admins (no requiere respuesta) — por si el heurístico se
-      // equivocara alguna vez, que quede constancia de que algo se saltó solo.
+      // Aviso silencioso solo a ADMINS_AVISO_SILENCIOSO (no requiere respuesta) — por si el
+      // heurístico se equivocara alguna vez, que quede constancia de que algo se saltó solo.
       await callNotifications({
         tipo: 'aviso_admin',
         datos: {
           titulo: 'ℹ️ La Piripiniela',
-          mensaje: `Jornada ${candidato} saltada automáticamente — no es de Primera (Champions/Copa/Selecciones u otra competición).`
+          mensaje: `Jornada ${candidato} saltada automáticamente — no es de Primera (Champions/Copa/Selecciones u otra competición).`,
+          destinatarios: ADMINS_AVISO_SILENCIOSO
         }
       });
 
       jornadaCierre = candidato;
-      huboAutoSalto = true;
       continue;
     }
 
     // validaCandidato === true: aquí para la cadena — ya hay una jornada de Primera real
-    // esperando. jornada_cerrada_at evita repetir la pregunta en cada pase mientras Felix no
+    // esperando. jornada_cerrada_at evita repetir la pregunta en cada pase mientras nadie
     // responda.
     const cierreKey = 'jornada_cerrada_at';
     const { data: cierreData } = await supabase
@@ -347,10 +352,11 @@ async function avanzarYPreguntarSiguiente(jornadaCierreInicial: number, rotacion
       });
       console.log('Jornada', jornadaCierre, 'cerrada a las', new Date(now).toISOString());
 
-      const seSalto = esSaltadaInicial || huboAutoSalto;
-      const mensajeConfirmacion = seSalto
-        ? `⏭️ Saltamos la jornada ${jornadaCierre}, pero ya está disponible la ${candidato} — confirmado que es de Primera. ¿La jugamos? Pulsa y confírmalo.`
-        : `🏁 Finalizada la jornada ${jornadaCierre}. La ${candidato} ya está disponible y es de Primera. ¿La jugamos? Pulsa y confírmalo.`;
+      // Sin mencionar ya la jornada anterior ("saltamos X") — con el auto-salto en cadena, esa
+      // jornada anterior puede ser ella misma un salto automático del que nadie tuvo que
+      // enterarse; lo único relevante para quien decide es que la nueva YA está confirmada como
+      // de Primera.
+      const mensajeConfirmacion = `🏁 Jornada ${candidato} ya disponible y parece de Primera. ¿Confirmas que abrimos apuestas? Pulsa para decidir.`;
       for (const admin of ADMINS) {
         await callNotifications({
           tipo: 'resultado_jornada',
@@ -557,7 +563,7 @@ async function procesarJornada(jornada: number, esActual: boolean) {
     // pregunta final: si Felix no contesta, no pasa nada solo — se queda esperando
     // indefinidamente a que él confirme desde la pantalla de admin.
     if (esActual && listoParaMirarSiguiente && temporadaOk) {
-      await avanzarYPreguntarSiguiente(jornada, rotacion, esSaltada);
+      await avanzarYPreguntarSiguiente(jornada, rotacion);
     }
 
     // Una jornada "saltada" (nadie apostó) nunca tiene filas en `apuestas` — sin este filtro,
