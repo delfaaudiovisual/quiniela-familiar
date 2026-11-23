@@ -791,7 +791,16 @@ serve(async (req) => {
     const jornadaActual = await getJornadaActual();
     const parsed = await fetchEscrutinio(jornadaActual);
 
-    if (parsed.partidos.length < 13) {
+    // Mismo guard de temporada que ya usa la rama jornadaHistorica: no basta con que el número de
+    // jornada coincida y haya ≥13 partidos — Losilla reutiliza números de jornada entre temporadas
+    // (caso real: "JORNADA 25" devolvía una ronda de Copa del Rey ya jugada de la temporada 25/26,
+    // en vez de la jornada 25 de la 26/27 que todavía no estaba publicada). Sin este chequeo, esa
+    // página vieja se aceptaba como buena, se evaluaba jornadaValida con los equipos equivocados
+    // (salía false), y el jugador normal veía "no hay jornada de Primera" aunque el admin ya
+    // hubiera confirmado la jornada real a través de /proximas.
+    const escrutinioPublicado = parsed.jornadaNum === jornadaActual && parsed.temporada === temporadaEsperada() && parsed.partidos.length >= 13;
+
+    if (!escrutinioPublicado) {
       // Escrutinio todavía no publicado para esta jornada — pasa justo al abrirla, si Losilla aún
       // no ha sacado su escrutinio aunque ya tenga el boleto listo en /proximas (mismo caso que
       // ya resuelve la rama jornadaHistorica de arriba, ver fetchProximas/construirDesdeProximas).
