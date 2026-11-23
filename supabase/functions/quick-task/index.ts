@@ -50,35 +50,6 @@ const supabase = createClient(
   Deno.env.get("SUPABASE_URL")!,
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
 );
-const SUPA_FUNCTIONS_URL = Deno.env.get("SUPABASE_URL")!.replace('.supabase.co', '.supabase.co/functions/v1');
-const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-
-// Mismo chequeo que hace cron-resultados para una jornada "saltada": si la SIGUIENTE ya tiene
-// datos publicados en Eduardo Losilla, no hace falta esperar al próximo tick del cron — se
-// comprueba aquí mismo, al momento de saltar, para que si ya está lista (como pasó con la 5→6)
-// se le pregunte a Felix encadenado, sin esperar.
-//
-// Ojo: esto es solo "¿hay bastante para ENSEÑARLE una previa a Felix y que decida?", no "¿es una
-// jornada válida de LaLiga?" — exigir jornadaValida aquí se probó y crea un bloqueo real: dos
-// semanas de Champions seguidas (jornadas "saltada" encadenadas) nunca llegan a preguntarle a
-// Felix, porque una jornada de Champions nunca va a ser jornadaValida. El aviso de "¿esto tiene
-// pinta de jornada normal?" ya se le muestra a Felix en la propia pantalla de confirmación
-// (jornadaValida/primeraCount viajan en la respuesta) — es ÉL quien decide si abre o vuelve a
-// saltar, no este chequeo.
-async function jornadaTieneDatos(jornada: number): Promise<boolean> {
-  try {
-    const res = await fetch(`${SUPA_FUNCTIONS_URL}/quiniela-jornada`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SERVICE_KEY}` },
-      body: JSON.stringify({ jornadaHistorica: jornada })
-    });
-    const data = await res.json();
-    return !!(data.partidos && data.partidos.length >= 13);
-  } catch(e) {
-    console.error('Error comprobando datos de jornada', jornada, e);
-    return false;
-  }
-}
 
 // Traduce un número de jornada de LaLiga a la "ronda real" de la familia — solo avanza cuando
 // una jornada se juega de verdad (mismo concepto que en index.html/cron-resultados). Sin fila
@@ -290,6 +261,21 @@ serve(async (req) => {
       break;
     }
 
+    case "aviso_admin": {
+      // Aviso informativo SOLO para los admins, nunca para el resto de jugadores — no necesita
+      // respuesta, es solo un "por si acaso te interesa saberlo". Pensado para el auto-salto de
+      // una jornada que cron-resultados detecta que no es de Primera (ver avanzarYPreguntarSiguiente):
+      // así queda constancia de que algo se saltó solo, por si el heurístico se equivocara alguna
+      // vez y hiciera falta corregirlo a mano.
+      await notificar(ADMINS, {
+        title: datos?.titulo || "ℹ️ La Piripiniela",
+        body: datos?.mensaje || "",
+        icon: "/icon.png",
+        url: datos?.url || "/"
+      });
+      break;
+    }
+
     case "apuestas_cerradas": {
       // Llamado por cron el jueves 22h
       await notificar(null, {
@@ -397,29 +383,13 @@ serve(async (req) => {
         }, { onConflict: 'jornada,clave' });
 
         // Al saltar no se avisa a nadie: no hay nada que hacer para los jugadores (no se apuesta
-        // esta jornada), así que el aviso de "saltamos por X motivo" solo era ruido. El único
-        // aviso que de verdad hace falta es el de más abajo, a los admins, cuando la SIGUIENTE
-        // jornada ya tiene datos listos para decidir — sin eso nadie sabría que toca actuar.
-
-        // Como nadie apuesta en una jornada saltada, no hace falta esperar a que sus partidos
-        // reales (a veces de Champions/selecciones, con calendario propio) acaben del todo antes
-        // de preguntar por la siguiente — solo a que ESA ya tenga datos. Se comprueba aquí mismo,
-        // en vez de esperar al próximo tick del cron, para que si ya está lista (como pasó con la
-        // 5→6) el admin encadene la decisión al momento.
-        if (await jornadaTieneDatos(nuevaJornada + 1)) {
-          const now = Date.now();
-          await supabase.from('jornada_estado').upsert({
-            jornada: nuevaJornada, clave: 'jornada_cerrada_at', valor: String(now)
-          }, { onConflict: 'jornada,clave' });
-          await supabase.from('jornada_estado').upsert({
-            jornada: nuevaJornada, clave: 'pendiente_confirmacion', valor: 'true'
-          }, { onConflict: 'jornada,clave' });
-          await notificar(ADMINS, {
-            title: "🏁 La Piripiniela",
-            body: `Saltamos la jornada ${nuevaJornada}, pero ya está disponible la ${nuevaJornada + 1}. ¿La jugamos? Pulsa y dime si abrimos apuestas o la saltamos también.`,
-            icon: "/icon.png", url: "/"
-          });
-        }
+        // esta jornada), así que el aviso de "saltamos por X motivo" solo era ruido. Tampoco se
+        // comprueba aquí mismo si la siguiente ya tiene datos — eso lo lleva SIEMPRE
+        // cron-resultados (avanzarYPreguntarSiguiente), que además de la longitud exige que sea
+        // jornadaValida de Primera antes de preguntar nada, y si no lo es la salta también ella
+        // sola, encadenado. Hacerlo aquí también, sin esa comprobación de validez, llevaba a
+        // preguntarle a Felix por una jornada de Champions/Copa que el propio cron habría saltado
+        // solo 15 minutos después. Como mucho hay que esperar al siguiente pase del cron (≤15 min).
       }
 
       return new Response(JSON.stringify({ ok: true, accion, jornada: nuevaJornada }), {
