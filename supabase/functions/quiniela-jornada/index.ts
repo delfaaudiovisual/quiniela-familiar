@@ -582,7 +582,6 @@ async function getEquiposFromFBD(competition: string): Promise<EquipoClasi[] | n
 }
 
 // ============ PRIMERA DIVISIÓN — jornada válida ============
-const MIN_PRIMERA_MATCHES = 5;
 const DIAS_FINDE = new Set(["VIE", "SAB", "DOM", "LUN"]);
 
 function normalizeTeam(s: string): string {
@@ -660,7 +659,12 @@ async function evaluarJornadaValida(partidos: any[]): Promise<{ valida: boolean;
   // Solo se rechaza por día si TODOS los partidos con día conocido caen fuera del finde (ej. jornada especial entre semana)
   const esFinDeSemana = diasConocidos.length === 0 || diasConocidos.some((d: string) => DIAS_FINDE.has(d));
   if (SALTAR_VALIDACION_TEMPORAL) return { valida: true, primeraCount };
-  return { valida: primeraCount >= MIN_PRIMERA_MATCHES && esFinDeSemana && pinta1a8DePrimera, primeraCount };
+  // Antes también se exigía primeraCount >= 5 sobre las 14 casillas regulares (bastaba con que
+  // apareciera UN equipo de Primera en cada una) — se quitó por redundante y menos preciso:
+  // pinta1a8DePrimera ya exige que en 1-8+Pleno los DOS equipos sean de Primera en casi todas, una
+  // señal mucho más difícil de colar por casualidad en una jornada de Copa/Champions/Selecciones.
+  // primeraCount se sigue calculando y devolviendo solo para mostrarlo en el aviso de la previa.
+  return { valida: esFinDeSemana && pinta1a8DePrimera, primeraCount };
 }
 
 // ============ SERVE ============
@@ -783,7 +787,7 @@ serve(async (req) => {
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 });
     }
 
-    // 1b. Jornada válida: al menos MIN_PRIMERA_MATCHES partidos con equipo de Primera
+    // 1b. Jornada válida: ver evaluarJornadaValida (1-8+Pleno Primera-contra-Primera + finde)
     const { valida: jornadaValida, primeraCount } = await evaluarJornadaValida(parsed.partidos);
     if (!jornadaValida) {
       return new Response(JSON.stringify({
