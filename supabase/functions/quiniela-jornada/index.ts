@@ -390,6 +390,71 @@ async function fetchEscrutinio(jornada: number) {
   return parseEduLosilla(await res.text());
 }
 
+// Página de "Próximas" — a diferencia de /escrutinio/jornada_<N> (que pide un número concreto y,
+// si esa jornada aún no existe para la temporada actual, puede caer de vuelta a una página vieja
+// de OTRA temporada con el mismo número), esta URL fija siempre enseña la siguiente jornada real
+// que todavía no se ha abierto, sin parámetro de número y sin ambigüedad de temporada — útil
+// específicamente para "¿ya hay datos de la jornada siguiente?" cuando el escrutinio todavía no
+// la tiene (Losilla publica el calendario completo de un boleto con más antelación de la que
+// tarda en aparecer en escrutinio). No trae marcadores (nada se ha jugado todavía), así que estos
+// partidos siempre salen con r/marcador a null — de sobra para evaluar jornadaValida y para la
+// previa que ve Felix.
+function parseEduProximas(html: string): { jornadaNum: number | null; partidos: any[] } {
+  const partidos: any[] = [];
+  const tituloMatch = html.match(/c-ayudas-proximas__tabla-partidos__titulo">\s*JORNADA\s+(\d+)/i);
+  const jornadaNum = tituloMatch ? parseInt(tituloMatch[1]) : null;
+  const chunks = html.split('aria-label="Partido número ');
+
+  const posicionesVistas = new Set<number>();
+  for (let i = 1; i < chunks.length; i++) {
+    const chunk = chunks[i].substring(0, 3000);
+    const posMatch = chunk.match(/^(\d+)"/);
+    if (!posMatch) continue;
+    const pos = parseInt(posMatch[1]);
+    if (pos < 1 || pos > 14) continue;
+    if (posicionesVistas.has(pos)) continue;
+    posicionesVistas.add(pos);
+    const ariaMatch = chunk.match(/aria-label="([^"]+)\s+contra\s+([^"]+)"/i);
+    if (!ariaMatch) continue;
+    const local = capitalize(ariaMatch[1].trim());
+    const visitante = capitalize(ariaMatch[2].trim());
+    const diaMatch = chunk.match(/time__day">([^<]+)</);
+    const dia = diaMatch ? diaMatch[1].trim() : null;
+    const horaMatch = chunk.match(/time__hour">([^<]+)</);
+    const hora = horaMatch ? horaMatch[1].trim() : null;
+    partidos.push({ posicion: pos, l: local, v: visitante, dia, hora });
+  }
+
+  const plenoIdx = html.indexOf('aria-label="Partido número 15"');
+  if (plenoIdx > -1) {
+    const plenoChunk = html.substring(plenoIdx, plenoIdx + 3000);
+    const ariaMatches = [...plenoChunk.matchAll(/aria-label="([^"]+)\s+contra\s+([^"]+)"/gi)];
+    let plenoLocal = "", plenoVisit = "";
+    if (ariaMatches.length > 0) {
+      plenoLocal = capitalize(ariaMatches[0][1].trim());
+      plenoVisit = capitalize(ariaMatches[0][2].trim());
+    }
+    const plenoDiaMatch = plenoChunk.match(/time__day">([^<]+)</);
+    const plenoDia = plenoDiaMatch ? plenoDiaMatch[1].trim() : null;
+    const plenoHoraMatch = plenoChunk.match(/time__hour">([^<]+)</);
+    const plenoHora = plenoHoraMatch ? plenoHoraMatch[1].trim() : null;
+    partidos.push({ posicion: 15, l: plenoLocal || "Pleno al 15", v: plenoVisit || "", pleno: true, dia: plenoDia, hora: plenoHora });
+  }
+
+  return { jornadaNum, partidos: partidos.sort((a, b) => a.posicion - b.posicion) };
+}
+
+async function fetchProximas(): Promise<{ jornadaNum: number | null; partidos: any[] }> {
+  try {
+    const res = await fetch(`https://www.eduardolosilla.es/quiniela/ayudas/proximas`, { headers: EDU_HEADERS });
+    if (!res.ok) return { jornadaNum: null, partidos: [] };
+    return parseEduProximas(await res.text());
+  } catch (e) {
+    console.error('Error fetching proximas:', e);
+    return { jornadaNum: null, partidos: [] };
+  }
+}
+
 // Temporada LaLiga esperada ahora mismo, ej. "26/27" (cambia de año en julio, antes de que arranque la Liga)
 function temporadaEsperada(): string {
   const now = new Date();
@@ -651,6 +716,28 @@ serve(async (req) => {
         return new Response(JSON.stringify({ jornadaNum: jornadaHistorica, temporada: parsed.temporada, source: "eduardolosilla_historico", jornadaValida, primeraCount, partidos: regular }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
+
+      // El escrutinio de esta jornada (futura) aún no existe para la temporada actual — pasa
+      // sobre todo justo después de saltar una jornada de Champions/Copa, cuando se pregunta por
+      // la siguiente antes de que Losilla publique su escrutinio. Antes de rendirse, se prueba la
+      // página de "Próximas" (ver fetchProximas): siempre enseña la jornada inmediatamente
+      // siguiente a la que ya está en juego, sin el problema de reutilización de números entre
+      // temporadas que tiene el escrutinio. Solo se acepta si su propio número coincide
+      // exactamente con el pedido — si no, puede que lo que haga falta sea más de una jornada por
+      // delante (esta página solo conoce la siguiente inmediata), y se trata igual que "todavía
+      // no publicada".
+      const proximas = await fetchProximas();
+      if (proximas.jornadaNum === jornadaHistorica && proximas.partidos.length >= 13) {
+        const regular = regularByPosicion(proximas.partidos, (p: any) => ({
+          l: p.l, v: p.v, r: null, c: false, marcador: null, suspendido: false, dia: p.dia || null, hora: p.hora || null,
+        }));
+        const pleno = proximas.partidos.find((p: any) => p.posicion === 15 || p.pleno);
+        regular.push({ l: pleno?.l || "Pleno al 15", v: pleno?.v || "", r: null, c: false, pleno: true, marcador: null, suspendido: false, dia: pleno?.dia || null, hora: pleno?.hora || null });
+        const { valida: jornadaValida, primeraCount } = await evaluarJornadaValida(proximas.partidos);
+        return new Response(JSON.stringify({ jornadaNum: jornadaHistorica, temporada: temporadaEsperada(), source: "eduardolosilla_proximas", jornadaValida, primeraCount, partidos: regular }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
       return new Response(JSON.stringify({ error: "No se pudo obtener la jornada histórica" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 404 });
     }
