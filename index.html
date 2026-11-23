@@ -1184,12 +1184,14 @@ async function renderConfirmarJornada(jornadaPendiente){
   let previaHtml='';
   if(preview){
     const regulares=preview.partidos.filter(pt=>!pt.pleno);
+    const pleno=preview.partidos.find(pt=>pt.pleno);
     if(preview.jornadaValida===false){
       previaHtml+=`<div class="alert alert-warn" style="text-align:left;margin-bottom:14px;"><i class="ti ti-alert-triangle"></i><p>⚠️ Solo ${preview.primeraCount} de ${regulares.length} partidos son de Primera — no tiene pinta de ser una jornada normal de LaLiga (puede ser una semana de Champions/Copa). Revisa antes de decidir.</p></div>`;
     }
     previaHtml+=`<div class="card" style="text-align:left;padding:14px 16px;margin-bottom:14px;">
       <p class="sec-label" style="margin-bottom:8px;">Partidos de la jornada ${siguiente}</p>
       ${regulares.map((pt,i)=>`<p style="font-size:13px;color:var(--text);padding:5px 0;border-bottom:0.5px solid var(--border-light);">${i+1}. ${pt.l} — ${pt.v}${pt.dia?` <span style="color:var(--text-ter);font-size:11px;">(${pt.dia.charAt(0)+pt.dia.slice(1).toLowerCase()}${pt.hora?' '+pt.hora:''})</span>`:''}</p>`).join('')}
+      ${pleno?`<p style="font-size:13px;color:var(--text);padding:5px 0;margin-top:4px;">Pleno al 15. ${pleno.l} — ${pleno.v}${pleno.dia?` <span style="color:var(--text-ter);font-size:11px;">(${pleno.dia.charAt(0)+pleno.dia.slice(1).toLowerCase()}${pleno.hora?' '+pleno.hora:''})</span>`:''}</p>`:''}
     </div>`;
   } else {
     previaHtml=`<div class="alert alert-info" style="text-align:left;margin-bottom:14px;"><i class="ti ti-info-circle"></i><p>No se pudo cargar la previa de partidos — puedes decidir igualmente.</p></div>`;
