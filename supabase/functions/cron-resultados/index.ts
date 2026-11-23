@@ -453,11 +453,14 @@ async function procesarJornada(jornada: number, esActual: boolean) {
 
     let listaParaPreguntar: boolean;
     if (esSaltada) {
-      // No basta con contar filas (>=13): Losilla puede tardar horas en publicar el calendario
-      // real y mientras tanto devolver algo provisional (ej. Selecciones) que igual cuenta 13+.
-      // jornadaValida es lo que de verdad distingue "ya está lista" de "todavía no".
-      const { partidos: partidosSiguiente, jornadaValida: validaSiguiente } = await getPartidos(jornada + 1);
-      listaParaPreguntar = partidosSiguiente.length >= 13 && !!validaSiguiente;
+      // Solo "¿hay bastante para enseñarle una previa a Felix?" (longitud), NO "¿es jornadaValida
+      // de LaLiga?" — exigir eso aquí se probó y bloquea el flujo entero cuando hay dos jornadas
+      // de Champions/Copa seguidas (ej. 23 y 24): como ninguna de las dos será jornadaValida nunca,
+      // a Felix no se le llega a preguntar ni para saltar la segunda también. Es él quien decide
+      // viendo la previa (que ya lleva jornadaValida/primeraCount para avisarle si pinta raro),
+      // no este chequeo.
+      const { partidos: partidosSiguiente } = await getPartidos(jornada + 1);
+      listaParaPreguntar = partidosSiguiente.length >= 13;
     } else {
       listaParaPreguntar = calendarioCompleto && yaLlegoUltimoDiaJornada(partidos);
     }

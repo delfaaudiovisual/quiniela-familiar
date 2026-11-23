@@ -57,6 +57,14 @@ const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 // datos publicados en Eduardo Losilla, no hace falta esperar al próximo tick del cron — se
 // comprueba aquí mismo, al momento de saltar, para que si ya está lista (como pasó con la 5→6)
 // se le pregunte a Felix encadenado, sin esperar.
+//
+// Ojo: esto es solo "¿hay bastante para ENSEÑARLE una previa a Felix y que decida?", no "¿es una
+// jornada válida de LaLiga?" — exigir jornadaValida aquí se probó y crea un bloqueo real: dos
+// semanas de Champions seguidas (jornadas "saltada" encadenadas) nunca llegan a preguntarle a
+// Felix, porque una jornada de Champions nunca va a ser jornadaValida. El aviso de "¿esto tiene
+// pinta de jornada normal?" ya se le muestra a Felix en la propia pantalla de confirmación
+// (jornadaValida/primeraCount viajan en la respuesta) — es ÉL quien decide si abre o vuelve a
+// saltar, no este chequeo.
 async function jornadaTieneDatos(jornada: number): Promise<boolean> {
   try {
     const res = await fetch(`${SUPA_FUNCTIONS_URL}/quiniela-jornada`, {
@@ -65,14 +73,7 @@ async function jornadaTieneDatos(jornada: number): Promise<boolean> {
       body: JSON.stringify({ jornadaHistorica: jornada })
     });
     const data = await res.json();
-    // No basta con contar filas (>=13): Eduardo Losilla puede tardar horas en terminar de
-    // publicar el calendario real de una jornada nueva, y mientras tanto su página puede
-    // devolver algo provisional con partidos de Selecciones/Copa que igualmente cuenta 13+ filas.
-    // jornadaValida (misma comprobación que usa la pantalla normal: suficientes equipos de
-    // Primera + días de fin de semana) es lo que de verdad distingue "ya está lista" de "todavía
-    // no" — sin esto, se podía encadenar la pregunta a Felix con una jornada que en realidad no
-    // tenía pinta de ser una jornada normal de LaLiga.
-    return !!(data.partidos && data.partidos.length >= 13 && data.jornadaValida);
+    return !!(data.partidos && data.partidos.length >= 13);
   } catch(e) {
     console.error('Error comprobando datos de jornada', jornada, e);
     return false;
