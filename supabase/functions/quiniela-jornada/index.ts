@@ -611,10 +611,13 @@ serve(async (req) => {
     if (jornadaHistorica) {
       const parsed = await fetchEscrutinio(jornadaHistorica);
       // Si Losilla todavía no ha publicado esta jornada, su web puede devolver (o redirigir a)
-      // la última jornada publicada en vez de un error — sin este chequeo, esa jornada anterior
-      // se mostraría mal etiquetada como si fuera la solicitada (ej. previa de jornada 8 mostrando
-      // en realidad los partidos de la jornada 7).
-      if (parsed.jornadaNum === jornadaHistorica && parsed.partidos.length >= 13) {
+      // otra jornada en vez de un error — sin estos dos chequeos, esa otra jornada se mostraría
+      // mal etiquetada como si fuera la solicitada. El número por sí solo NO basta: Losilla
+      // reutiliza números de jornada entre temporadas (ej. una ronda de Copa del Rey ya jugada
+      // hace meses, de la temporada 25/26, resultó llevar el mismo "JORNADA 25" que todavía no
+      // existe para la 26/27) — así que además de que el número coincida, se exige que la
+      // temporada de esa página sea la actual; si no, se trata igual que "aún no publicada".
+      if (parsed.jornadaNum === jornadaHistorica && parsed.temporada === temporadaEsperada() && parsed.partidos.length >= 13) {
         // `dia` (VIE/SAB/DOM/LUN...) lo usa cron-resultados para saber cuándo es de verdad el
         // último día de calendario de la jornada, y también sirve para la previa de Felix. El
         // campo `time__day` de Losilla ha dejado de traerlo (viene null para todos los partidos,
